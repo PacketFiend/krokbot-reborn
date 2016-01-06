@@ -2,7 +2,6 @@ from sopel import module
 import sqlite3
 import random
 import time
-#import search
 from random import randint
 
 import sys
@@ -10,7 +9,7 @@ import twitter
 import requests
 from geopy.geocoders import Nominatim
 
-import mkgen
+import kgen
 import feedparser
 import creds
 """
@@ -110,10 +109,18 @@ def news_announce(bot):
 		#bot.msg("#lounge",message, 1)
 
 # End News System
+
+@module.commands('sauce')
+def sauce(bot, trigger):
+	bot.memory["who"] = {}	
+	bot.write(["WHO", "#OFFTOPIC"])
+	for w in bot.memory["who"]:
+		print w	
+		
 @module.commands('newkrok')
 def newkrok(bot, trigger):
 	file_ = open('rockho-improved.log')
-	markov = mkgen.Markov(file_)
+	markov = kgen.Markov(file_)
 	new_krok = markov.generate_markov_text()
 	bot.say(new_krok)
 
