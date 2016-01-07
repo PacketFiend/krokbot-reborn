@@ -10,8 +10,8 @@ import requests
 from geopy.geocoders import Nominatim
 
 import kgen
-import feedparser
 import creds
+import feedparser
 """
 @module.commands('echo','repeat')
 def echo(bot, trigger):
@@ -258,3 +258,37 @@ def talk_shit(bot, trigger):
 	ret_quote = clean_quote
 	full = trigger.nick + ": " + ret_quote
 	bot.say(full)
+
+@module.commands('random_yo')
+def random_yo(bot, trigger):
+# pick a random nick out of dict of nicks, remove 
+# krok{b,p}ot and other blocked nicks
+    channel = trigger.sender
+    names = bot.privileges[channel]
+    blocked_nicks = ('krokbot', 'krokpot')
+    for bnick in blocked_nicks:
+        if bnick in names.keys():
+            del names[bnick]
+    rand_nick = random.choice(list(names.keys()))
+
+# grab a random quote
+    conn = sqlite3.connect('krokquotes.db')
+    items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
+    i = 0
+    for row in items:
+        i += 1
+
+    rnd = randint(0,i)
+    x = 0
+    items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
+    for q in items:
+        if x == rnd:
+            rand_quote = str(q[1])
+            rand_q_id = str(q[0])
+        x += 1
+
+    rand_yo = "yo " + rand_nick 
+    rand_krok = rand_quote.replace("\\'","'")
+
+    bot.say(rand_yo)
+    bot.say(rand_krok)
