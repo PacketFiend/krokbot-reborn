@@ -161,6 +161,7 @@ def gsearch(bot, trigger):
 		bot.reply("usage: !gsearch location | jihaid jihad")
 
 # shootout time for the virtual 2 peso thug!
+@module.rate(20) # we may need to adjust this, but we dont need people spamming the command
 @module.commands('shootout')
 def shootout(bot, trigger):
 	imp = trigger.group(2)
