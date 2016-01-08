@@ -259,19 +259,8 @@ def talk_shit(bot, trigger):
 	full = trigger.nick + ": " + ret_quote
 	bot.say(full)
 
-@module.commands('random_yo')
-def random_yo(bot, trigger):
-# pick a random nick out of dict of nicks, remove 
-# krok{b,p}ot and other blocked nicks
-    channel = trigger.sender
-    names = bot.privileges[channel]
-    blocked_nicks = ('krokbot', 'krokpot')
-    for bnick in blocked_nicks:
-        if bnick in names.keys():
-            del names[bnick]
-    rand_nick = random.choice(list(names.keys()))
-
 # grab a random quote
+def random_krok():
     conn = sqlite3.connect('krokquotes.db')
     items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
     i = 0
@@ -286,9 +275,46 @@ def random_yo(bot, trigger):
             rand_quote = str(q[1])
             rand_q_id = str(q[0])
         x += 1
-
-    rand_yo = "yo " + rand_nick 
     rand_krok = rand_quote.replace("\\'","'")
 
-    bot.say(rand_yo)
-    bot.say(rand_krok)
+    return rand_krok
+
+
+# print a random 'yo <nick>' and random krokquote
+@module.interval(900)
+def random_yo(bot):
+# for each channel that we're in, pick a random nick out of privileges dict,
+# remove krok{b,p}ot and other blocked nicks
+    allchannels = bot.privileges
+    for channel in allchannels:
+        if random.random() < 0.3:
+            channel.encode('utf-8')
+            names = bot.privileges[channel]
+            blocked_nicks = ('krokbot', 'krokpot')
+            for bnick in blocked_nicks:
+                if bnick in names.keys():
+                    del names[bnick]
+            rand_nick = random.choice(list(names.keys()))
+
+            rand_krok = random_krok() 
+            rand_yo = "yo " + rand_nick 
+            bot.msg(channel, rand_yo, 1)
+            bot.msg(channel, rand_krok, 1)
+        else:
+            pass
+
+# call a 'random yo'
+@module.commands('yo')
+def random_yo_callable(bot, trigger):
+    channel = trigger.sender
+    names = bot.privileges[channel]
+    blocked_nicks = ('krokbot', 'krokpot')
+    for bnick in blocked_nicks:
+        if bnick in names.keys():
+            del names[bnick]
+    rand_nick = random.choice(list(names.keys()))
+
+    rand_krok = random_krok() 
+    rand_yo = "yo " + rand_nick 
+    bot.msg(channel, rand_yo, 1)
+    bot.msg(channel, rand_krok, 1)
