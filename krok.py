@@ -281,12 +281,17 @@ def random_krok():
 
 
 # print a random 'yo <nick>' and random krokquote
-@module.interval(1800)
+@module.interval(3600)
 def random_yo(bot):
 # for each channel that we're in, pick a random nick out of privileges dict,
 # remove krok{b,p}ot and other blocked nicks
-    allchannels = bot.privileges
-    for channel in allchannels:
+    channel_list = []
+    conn_channels = bot.privileges
+    for channel in conn_channels:
+        if channel not in channel_list:
+            channel_list.append(channel)
+    for channel in channel_list:
+        #print channel
         if random.random() < 0.3:
             channel.encode('utf-8')
             names = bot.privileges[channel]
