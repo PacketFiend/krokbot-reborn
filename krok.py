@@ -283,7 +283,7 @@ def random_krok():
 
 
 # print a random 'yo <nick>' and random krokquote
-@module.interval(3600)
+@module.interval(5400)
 def random_yo(bot):
 # for each channel that we're in, pick a random nick out of privileges dict,
 # remove krok{b,p}ot and other blocked nicks
