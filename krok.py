@@ -117,6 +117,7 @@ def sauce(bot, trigger):
 	for w in bot.memory["who"]:
 		print w	
 		
+@module.rate(20) # we may need to adjust this, but we dont need people spamming the command
 @module.commands('newkrok')
 def newkrok(bot, trigger):
 	file_ = open('rockho-improved.log')
