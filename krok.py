@@ -261,6 +261,54 @@ def talk_shit(bot, trigger):
 	full = trigger.nick + ": " + ret_quote
 	bot.say(full)
 
+
+# deeplove - target another nick with insults
+@module.rate(20) # we may need to adjust this, but we dont need people spamming the command
+@module.commands('deeplove')
+def deeplove(bot, trigger):
+    clean_quote = ''
+    ret_quote = ''
+    conn = sqlite3.connect('krokquotes.db')
+    nickarg = trigger.args[1].split()
+    try:
+        clean_quote = ''
+        ret_quote = ''
+        name = nickarg[1]
+        items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
+
+        cnt = 0
+        for i in items:
+            cnt += 1
+        if cnt == 0:
+            ret_quote = "that looks like an asshole I've never seen before"
+        else:
+            quote = randint(0,cnt)
+
+            items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
+
+            cnt = 0
+            clean_quote = ''
+            for q in items:
+                if cnt == quote:
+		            clean_quote = q[1].replace("\\'","'")	
+                else:
+                    pass
+                cnt += 1
+            print name
+    except IndexError:
+        ret_quote = "you didn't type the name asshole"
+    #except:
+    #    ret_quite = "so high I completely forgot what I was doing"
+
+    if clean_quote:
+        full = clean_quote
+    elif ret_quote:
+        full = ret_quote
+    else:
+        full = "so high I completely forgot what I was doing"
+    bot.say(full)
+
+
 # grab a random quote
 def random_krok():
     conn = sqlite3.connect('krokquotes.db')
