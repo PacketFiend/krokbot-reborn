@@ -271,8 +271,6 @@ def deeplove(bot, trigger):
     conn = sqlite3.connect('krokquotes.db')
     nickarg = trigger.args[1].split()
     try:
-        clean_quote = ''
-        ret_quote = ''
         name = nickarg[1]
         items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
 
@@ -294,7 +292,7 @@ def deeplove(bot, trigger):
                 else:
                     pass
                 cnt += 1
-            print name
+            print trigger.nick + "@" + trigger.sender + " is insulting: " + name
     except IndexError:
         ret_quote = "you didn't type the name asshole"
     #except:
