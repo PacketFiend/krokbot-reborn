@@ -120,6 +120,7 @@ def sauce(bot, trigger):
 @module.rate(20) # we may need to adjust this, but we dont need people spamming the command
 @module.commands('newkrok')
 def newkrok(bot, trigger):
+""" usage: !newkrok """
 	file_ = open('rockho-improved.log')
 	markov = kgen.Markov(file_)
 	new_krok = markov.generate_markov_text()
@@ -127,6 +128,7 @@ def newkrok(bot, trigger):
 
 @module.commands('tsearch')
 def tsearch(bot, trigger):
+""" usage: !tsearch <search string> """
 	if trigger.group(2):
 		criteria = trigger.group(2)
 		query = api.GetSearch(term=criteria,result_type="recent", count="10")
@@ -140,6 +142,7 @@ def tsearch(bot, trigger):
 
 @module.commands('gsearch')
 def gsearch(bot, trigger):
+""" usage: !gsearch <location> | <search string> """
 	if trigger.group(2):
 		# we can work with this
 		find = trigger.group(2)
@@ -165,6 +168,7 @@ def gsearch(bot, trigger):
 @module.rate(20) # we may need to adjust this, but we dont need people spamming the command
 @module.commands('shootout')
 def shootout(bot, trigger):
+""" usage: !shootout <num> (between 1 and 5) """
 	imp = trigger.group(2)
 	shard = imp.split(" ")
 
@@ -205,6 +209,7 @@ def shootout(bot, trigger):
 # this gets a random quote from the database
 @module.commands('krokquote')
 def krokquote(bot, trigger):
+""" usage: !krokquote """
 	conn = sqlite3.connect('krokquotes.db')
 	items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
 	i = 0
@@ -266,6 +271,7 @@ def talk_shit(bot, trigger):
 @module.rate(20) # we may need to adjust this, but we dont need people spamming the command
 @module.commands('deeplove')
 def deeplove(bot, trigger):
+""" usage: !deeplove <nick> """
     clean_quote = ''
     ret_quote = ''
     conn = sqlite3.connect('krokquotes.db')
@@ -359,6 +365,7 @@ def random_yo(bot):
 # call a 'random yo'
 @module.commands('yo')
 def random_yo_callable(bot, trigger):
+""" usage: !yo  """
     channel = trigger.sender
     names = bot.privileges[channel]
     blocked_nicks = ('krokbot', 'krokpot')
