@@ -24,21 +24,27 @@ api = twitter.Api(consumer_key=creds.tw_consumer_key,
 	access_token_secret=creds.tw_access_token_secret)
 
 geolocator = Nominatim()
+
+# Define some memory dicts/lists for keeping track of users
+def setup(bot):
+    bot.memory["user_quotes"] = {}
+
 # Begin News System
 global news
 news = False
 
 def find_hits(headlines):
-        words = ['terror','gun','attack','seige','shooting']
-        hits = []
-        for s in headlines:
-                for w in words:
-                        if w in s:
-                                hits.append(s)
-                        else:
-                                pass
-        goats = list(set(hits))
-        return goats
+    words = ['terror','gun','attack','seige','shooting']
+    hits = []
+    for s in headlines:
+        for w in words:
+            if w in s:
+                hits.append(s)
+            else:
+                pass
+            goats = list(set(hits))
+            return goats
+    
 # Function to fetch the rss feed and return the parsed RSS
 def parseRSS( rss_url ):
     return feedparser.parse( rss_url )
@@ -112,123 +118,120 @@ def news_announce(bot):
 
 @module.commands('sauce')
 def sauce(bot, trigger):
-	bot.memory["who"] = {}	
-	bot.write(["WHO", "#OFFTOPIC"])
-	for w in bot.memory["who"]:
-		print w	
+    bot.memory["who"] = {}
+    bot.write(["WHO", "#OFFTOPIC"])
+    for w in bot.memory["who"]:
+        print w	
 		
 @module.rate(20) # we may need to adjust this, but we dont need people spamming the command
 @module.commands('newkrok')
 def newkrok(bot, trigger):
-""" usage: !newkrok """
-	file_ = open('rockho-improved.log')
-	markov = kgen.Markov(file_)
-	new_krok = markov.generate_markov_text()
-	bot.say(new_krok)
+    """ usage: !newkrok """
+    file_ = open('rockho-improved.log')
+    markov = kgen.Markov(file_)
+    new_krok = markov.generate_markov_text()
+    bot.say(new_krok)
 
 @module.commands('tsearch')
 def tsearch(bot, trigger):
-""" usage: !tsearch <search string> """
-	if trigger.group(2):
-		criteria = trigger.group(2)
-		query = api.GetSearch(term=criteria,result_type="recent", count="10")
-		tweets = []
-		for q in query:
-			info = q.user.screen_name + "("+q.created_at+") >> " +q.text
-			tweets.append(info)
-			bot.msg(trigger.nick,info,1)
-	else:
-		bot.reply("usage: !tsearch jihad jihad")
+    """ usage: !tsearch <search string> """
+    if trigger.group(2):
+        criteria = trigger.group(2)
+        query = api.GetSearch(term=criteria,result_type="recent", count="10")
+        tweets = []
+        for q in query:
+            info = q.user.screen_name + "("+q.created_at+") >> " +q.text
+            tweets.append(info)
+            bot.msg(trigger.nick,info,1)
+    else:
+        bot.reply("usage: !tsearch jihad jihad")
 
 @module.commands('gsearch')
 def gsearch(bot, trigger):
-""" usage: !gsearch <location> | <search string> """
-	if trigger.group(2):
-		# we can work with this
-		find = trigger.group(2)
-		(locate, criteria) = find.split("|")
+    """ usage: !gsearch <location> | <search string> """
+    if trigger.group(2):
+        # we can work with this
+        find = trigger.group(2)
+        (locate, criteria) = find.split("|")
 
+        location = geolocator.geocode(locate)
 
-		location = geolocator.geocode(locate)
+        lat = location.latitude
+        lng = location.longitude
 
-		lat = location.latitude
-		lng = location.longitude
-
-		query = api.GetSearch(term=criteria, geocode=(lat, lng, "20mi"),
+        query = api.GetSearch(term=criteria, geocode=(lat, lng, "20mi"),
 				      result_type="recent", count="10")
-		tweets = []
-		for q in query:
-			info = q.user.screen_name + "("+q.created_at+") >> " +q.text
-			tweets.append(info)
-			bot.msg(trigger.nick, info, 1)
-	else:
-		bot.reply("usage: !gsearch location | jihaid jihad")
+        tweets = []
+        for q in query:
+            info = q.user.screen_name + "("+q.created_at+") >> " +q.text
+            tweets.append(info)
+            bot.msg(trigger.nick, info, 1)
+    else:
+        bot.reply("usage: !gsearch location | jihaid jihad")
 
 # shootout time for the virtual 2 peso thug!
 @module.rate(20) # we may need to adjust this, but we dont need people spamming the command
 @module.commands('shootout')
 def shootout(bot, trigger):
-""" usage: !shootout <num> (between 1 and 5) """
-	imp = trigger.group(2)
-	shard = imp.split(" ")
+    """ usage: !shootout <num> (between 1 and 5) """
+    imp = trigger.group(2)
+    shard = imp.split(" ")
 
-	if int(shard[0]) > 5:
-		bot.say(trigger.nick + ": quit being a chomo, chomo")	
-	else:
-		file = 'rockho-improved.log'
-		num_lines = sum(1 for line in open(file))
+    if int(shard[0]) > 5:
+        bot.say(trigger.nick + ": quit being a chomo, chomo")	
+    else:
+        file = 'rockho-improved.log'
+        num_lines = sum(1 for line in open(file))
 
-		f = open(file)
-		lines = f.readlines()
-		f.close()
+        f = open(file)
+        lines = f.readlines()
+        f.close()
 
-		max =  num_lines - 1
+        max =  num_lines - 1
 
-		#line = randint(0,max)
+        #line = randint(0,max)
 
-		limit = int(shard[0])
-		if limit > 5:
-			limit = int(5)
-			i = 1
-			while i <= limit:
-				line = randint(0,max)
-				reply = str(lines[line].decode('utf8'))
-				bot.say(reply)
-				i += 1
-		else :
-			i = 1
-			while i <= limit:
-				line = randint(0,max)
-				#print str(lines[line])
-				reply = str(lines[line].decode('utf8'))
-				bot.say(reply)
-				i += 1
-
-
+        limit = int(shard[0])
+        if limit > 5:
+            limit = int(5)
+            i = 1
+            while i <= limit:
+                line = randint(0,max)
+                reply = str(lines[line].decode('utf8'))
+                bot.say(reply)
+                i += 1
+        else:
+            i = 1
+            while i <= limit:
+                line = randint(0,max)
+                #print str(lines[line])
+                reply = str(lines[line].decode('utf8'))
+                bot.say(reply)
+                i += 1
 
 # this gets a random quote from the database
 @module.commands('krokquote')
 def krokquote(bot, trigger):
-""" usage: !krokquote """
-	conn = sqlite3.connect('krokquotes.db')
-	items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
-	i = 0
-	for row in items:
-		i += 1
+    """ usage: !krokquote """
+    conn = sqlite3.connect('krokquotes.db')
+    items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
+    i = 0
+    for row in items:
+        i += 1
+	
+    rnd = randint(0,i)
+    x = 0
+    items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
+    for q in items:
+        if x == rnd:
+            quote = str(q[1])
+            q_id = str(q[0])
+            x += 1
 
-	rnd = randint(0,i)
-	x = 0
-	items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
-	for q in items:
-		if x == rnd:
-			quote = str(q[1])
-			q_id = str(q[0])
-		x += 1
+    return_quote = "("+q_id+") "+quote
 
-	return_quote = "("+q_id+") "+quote
-
-	rq_clean = return_quote.replace("\\'",",")
-	bot.say(rq_clean)
+    rq_clean = return_quote.replace("\\'",",")
+    bot.say(rq_clean)
 
 # this listens for when someone talks about it
 @module.rule(r'.*krokbot.*')
@@ -266,12 +269,11 @@ def talk_shit(bot, trigger):
 	full = trigger.nick + ": " + ret_quote
 	bot.say(full)
 
-
 # deeplove - target another nick with insults
 @module.rate(20) # we may need to adjust this, but we dont need people spamming the command
 @module.commands('deeplove')
 def deeplove(bot, trigger):
-""" usage: !deeplove <nick> """
+    """ usage: !deeplove <nick> """
     clean_quote = ''
     ret_quote = ''
     conn = sqlite3.connect('krokquotes.db')
@@ -306,11 +308,16 @@ def deeplove(bot, trigger):
 
     if clean_quote:
         full = clean_quote
+        bot.memory["user_quotes"].setdefault(name, [])
+        bot.memory["user_quotes"][name].append(clean_quote)
     elif ret_quote:
         full = ret_quote
     else:
         full = "so high I completely forgot what I was doing"
     bot.say(full)
+    print "Other quotes in memory:"
+    for user, quotes in bot.memory["user_quotes"].items():
+        print user + ": " + str(quotes)
 
 
 # grab a random quote
@@ -332,7 +339,6 @@ def random_krok():
     rand_krok = rand_quote.replace("\\'","'")
 
     return rand_krok
-
 
 # print a random 'yo <nick>' and random krokquote
 @module.interval(5400)
@@ -365,7 +371,7 @@ def random_yo(bot):
 # call a 'random yo'
 @module.commands('yo')
 def random_yo_callable(bot, trigger):
-""" usage: !yo  """
+    """ usage: !yo  """
     channel = trigger.sender
     names = bot.privileges[channel]
     blocked_nicks = ('krokbot', 'krokpot')
