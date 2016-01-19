@@ -369,6 +369,7 @@ def random_yo(bot):
             pass
 
 # call a 'random yo'
+@module.rate(20)
 @module.commands('yo')
 def random_yo_callable(bot, trigger):
     """ usage: !yo  """
