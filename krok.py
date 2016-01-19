@@ -278,6 +278,11 @@ def deeplove(bot, trigger):
     ret_quote = ''
     conn = sqlite3.connect('krokquotes.db')
     nickarg = trigger.args[1].split()
+    name = nickarg[1]
+    if name not in bot.memory["user_quotes"].keys():
+        bot.memory["user_quotes"][name] = []
+        print name + " not found in bot.memory(), adding."
+
     try:
         name = nickarg[1]
         items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
@@ -296,10 +301,28 @@ def deeplove(bot, trigger):
             clean_quote = ''
             for q in items:
                 if cnt == quote:
-		            clean_quote = q[1].replace("\\'","'")	
+                    temp_quote = q[1].replace("\\'","'")
+                    # initialize memory for recent quotes
+                    if len(bot.memory["user_quotes"][name]) == 0:
+                        bot.memory["user_quotes"].setdefault(name, [])
+                        bot.memory["user_quotes"][name].append(clean_quote)
+                        clean_quote = temp_quote
+                        print "bot.memory for user is empty dict, initializing"
+                    # check if quote is in recent quotes
+                    if temp_quote in bot.memory["user_quotes"][name]:
+                        #print "Found the quote: " + temp_quote
+                        pass
+                    else:
+                        #print "Quote not found, adding: " + temp_quote
+                        clean_quote = temp_quote
+                        if len(bot.memory["user_quotes"][name]) >= 5:
+                            bot.memory["user_quotes"][name].pop(0)
+                        bot.memory["user_quotes"][name].append(clean_quote)
+                        clean_quote = temp_quote
                 else:
                     pass
                 cnt += 1
+
             print trigger.nick + "@" + trigger.sender + " is insulting: " + name
     except IndexError:
         ret_quote = "you didn't type the name asshole"
@@ -308,17 +331,13 @@ def deeplove(bot, trigger):
 
     if clean_quote:
         full = clean_quote
-        bot.memory["user_quotes"].setdefault(name, [])
-        bot.memory["user_quotes"][name].append(clean_quote)
     elif ret_quote:
         full = ret_quote
     else:
         full = "so high I completely forgot what I was doing"
     bot.say(full)
-    print "Other quotes in memory:"
     for user, quotes in bot.memory["user_quotes"].items():
         print user + ": " + str(quotes)
-
 
 # grab a random quote
 def random_krok():
@@ -369,7 +388,6 @@ def random_yo(bot):
             pass
 
 # call a 'random yo'
-@module.rate(20)
 @module.commands('yo')
 def random_yo_callable(bot, trigger):
     """ usage: !yo  """
