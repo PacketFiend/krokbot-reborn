@@ -5,6 +5,7 @@ import time
 from random import randint
 
 import sys
+import shutil
 import twitter
 import requests
 from geopy.geocoders import Nominatim
@@ -12,6 +13,7 @@ from geopy.geocoders import Nominatim
 import kgen
 import creds
 import feedparser
+import arrow
 """
 @module.commands('echo','repeat')
 def echo(bot, trigger):
@@ -131,6 +133,32 @@ def newkrok(bot, trigger):
     markov = kgen.Markov(file_)
     new_krok = markov.generate_markov_text()
     bot.say(new_krok)
+
+@module.require_admin # this is temorary, function still needs some ironing out
+@module.commands('big_tsearch')
+def big_tsearch(bot, trigger):
+	""" usage: !big_tsearch <search string> """
+	requestor = trigger.nick
+	date = arrow.now()
+	filename = requestor + "_" + str(date) + ".txt"
+	criteria = trigger.group(2)
+
+	f = open(filename,"w")
+
+	query = api.GetSearch(term=criteria,result_type="recent", count="50")
+	tweets = []
+	for q in query:
+	    info = q.user.screen_name + "("+q.created_at+") >> " +q.text
+	    f.write(info.encode('utf-8'))
+	    f.write("\n") 
+	    tweets.append(info)
+
+	f.close()
+	# lets move the file
+	shutil.move(filename, '/home/dhynes/public_html')
+	msg = "Your file http://192.168.1.23/~dhynes/"+str(filename)+" has been created successfully"
+	bot.msg(trigger.nick,msg, 1) 
+            
 
 @module.commands('tsearch')
 def tsearch(bot, trigger):
