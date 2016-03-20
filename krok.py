@@ -5,15 +5,14 @@ import time
 from random import randint
 
 import sys
-import shutil
 import twitter
 import requests
 from geopy.geocoders import Nominatim
+import praw
 
 import kgen
 import creds
 import feedparser
-import arrow
 """
 @module.commands('echo','repeat')
 def echo(bot, trigger):
@@ -133,32 +132,6 @@ def newkrok(bot, trigger):
     markov = kgen.Markov(file_)
     new_krok = markov.generate_markov_text()
     bot.say(new_krok)
-
-@module.require_admin # this is temorary, function still needs some ironing out
-@module.commands('big_tsearch')
-def big_tsearch(bot, trigger):
-	""" usage: !big_tsearch <search string> """
-	requestor = trigger.nick
-	date = arrow.now()
-	filename = requestor + "_" + str(date) + ".txt"
-	criteria = trigger.group(2)
-
-	f = open(filename,"w")
-
-	query = api.GetSearch(term=criteria,result_type="recent", count="50")
-	tweets = []
-	for q in query:
-	    info = q.user.screen_name + "("+q.created_at+") >> " +q.text
-	    f.write(info.encode('utf-8'))
-	    f.write("\n") 
-	    tweets.append(info)
-
-	f.close()
-	# lets move the file
-	shutil.move(filename, '/home/dhynes/public_html')
-	msg = "Your file http://192.168.1.23/~dhynes/"+str(filename)+" has been created successfully"
-	bot.msg(trigger.nick,msg, 1) 
-            
 
 @module.commands('tsearch')
 def tsearch(bot, trigger):
@@ -306,11 +279,6 @@ def deeplove(bot, trigger):
     ret_quote = ''
     conn = sqlite3.connect('krokquotes.db')
     nickarg = trigger.args[1].split()
-    name = nickarg[1]
-    if name not in bot.memory["user_quotes"].keys():
-        bot.memory["user_quotes"][name] = []
-        print name + " not found in bot.memory(), adding."
-
     try:
         name = nickarg[1]
         items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
@@ -329,28 +297,10 @@ def deeplove(bot, trigger):
             clean_quote = ''
             for q in items:
                 if cnt == quote:
-                    temp_quote = q[1].replace("\\'","'")
-                    # initialize memory for recent quotes
-                    if len(bot.memory["user_quotes"][name]) == 0:
-                        bot.memory["user_quotes"].setdefault(name, [])
-                        bot.memory["user_quotes"][name].append(clean_quote)
-                        clean_quote = temp_quote
-                        print "bot.memory for user is empty dict, initializing"
-                    # check if quote is in recent quotes
-                    if temp_quote in bot.memory["user_quotes"][name]:
-                        #print "Found the quote: " + temp_quote
-                        pass
-                    else:
-                        #print "Quote not found, adding: " + temp_quote
-                        clean_quote = temp_quote
-                        if len(bot.memory["user_quotes"][name]) >= 5:
-                            bot.memory["user_quotes"][name].pop(0)
-                        bot.memory["user_quotes"][name].append(clean_quote)
-                        clean_quote = temp_quote
+		            clean_quote = q[1].replace("\\'","'")	
                 else:
                     pass
                 cnt += 1
-
             print trigger.nick + "@" + trigger.sender + " is insulting: " + name
     except IndexError:
         ret_quote = "you didn't type the name asshole"
@@ -359,13 +309,17 @@ def deeplove(bot, trigger):
 
     if clean_quote:
         full = clean_quote
+        bot.memory["user_quotes"].setdefault(name, [])
+        bot.memory["user_quotes"][name].append(clean_quote)
     elif ret_quote:
         full = ret_quote
     else:
         full = "so high I completely forgot what I was doing"
     bot.say(full)
+    print "Other quotes in memory:"
     for user, quotes in bot.memory["user_quotes"].items():
         print user + ": " + str(quotes)
+
 
 # grab a random quote
 def random_krok():
@@ -416,6 +370,7 @@ def random_yo(bot):
             pass
 
 # call a 'random yo'
+@module.rate(20)
 @module.commands('yo')
 def random_yo_callable(bot, trigger):
     """ usage: !yo  """
@@ -431,3 +386,29 @@ def random_yo_callable(bot, trigger):
     rand_yo = "yo " + rand_nick 
     bot.msg(channel, rand_yo, 1)
     bot.msg(channel, rand_krok, 1)
+
+# Reddit titty pic poster
+@module.interval(5400)
+def sluttosphere(bot):
+    channel_list = []
+    conn_channels = bot.privileges
+    for channel in conn_channels:
+        if channel not in channel_list:
+            channel_list.append(channel)
+
+    r = praw.Reddit(user_agent='sopel_get_titty_pic')
+    subreddits = ['boobs', 'gonemild', 'tits', 'redheads']
+    latest_submissions = []
+
+    for sub in subreddits:
+        submissions = r.get_subreddit(sub).get_new(limit=15)
+        for s in submissions:
+            latest_submission = "[" + s.title + "] - " + s.url
+            latest_submissions.append(latest_submission)
+
+    rand_submission = "NSFW - " + random.choice(list(latest_submissions))
+    print rand_submission
+    for channel in channel_list:
+        print channel
+        bot.msg(channel, rand_submission, 1)
+    #bot.say(rand_submission)
