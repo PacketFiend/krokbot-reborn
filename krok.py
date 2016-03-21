@@ -388,8 +388,9 @@ def random_yo_callable(bot, trigger):
     bot.msg(channel, rand_krok, 1)
 
 # Reddit titty pic poster
-@module.interval(5400)
-def sluttosphere(bot):
+@module.rate(20)
+@module.commands('tittypic')
+def sluttosphere(bot, trigger):
     channel_list = []
     conn_channels = bot.privileges
     for channel in conn_channels:
