@@ -391,12 +391,6 @@ def random_yo_callable(bot, trigger):
 @module.rate(20)
 @module.commands('tittypic')
 def sluttosphere(bot, trigger):
-    channel_list = []
-    conn_channels = bot.privileges
-    for channel in conn_channels:
-        if channel not in channel_list:
-            channel_list.append(channel)
-
     r = praw.Reddit(user_agent='sopel_get_titty_pic')
     subreddits = ['boobs', 'gonemild', 'tits', 'redheads']
     latest_submissions = []
@@ -409,7 +403,4 @@ def sluttosphere(bot, trigger):
 
     rand_submission = "NSFW - " + random.choice(list(latest_submissions))
     print rand_submission
-    for channel in channel_list:
-        print channel
-        bot.msg(channel, rand_submission, 1)
-    #bot.say(rand_submission)
+    bot.say(rand_submission)
