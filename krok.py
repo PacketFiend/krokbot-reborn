@@ -1,4 +1,6 @@
-from sopel import module
+#!/usr/bin/env python
+
+from sopel import module, tools
 import sqlite3
 import random
 import time
@@ -301,7 +303,7 @@ def deeplove(bot, trigger):
                 else:
                     pass
                 cnt += 1
-            print trigger.nick + "@" + trigger.sender + " is insulting: " + name
+            print deeplove.__name__ + " - " + trigger.nick + "@" + trigger.sender + " is insulting: " + name
     except IndexError:
         ret_quote = "you didn't type the name asshole"
     #except:
@@ -316,7 +318,7 @@ def deeplove(bot, trigger):
     else:
         full = "so high I completely forgot what I was doing"
     bot.say(full)
-    print "Other quotes in memory:"
+    print deeplove.__name__ + " - Other quotes in memory:"
     for user, quotes in bot.memory["user_quotes"].items():
         print user + ": " + str(quotes)
 
@@ -388,19 +390,32 @@ def random_yo_callable(bot, trigger):
     bot.msg(channel, rand_krok, 1)
 
 # Reddit titty pic poster
-@module.rate(20)
-@module.commands('tittypic')
-def sluttosphere(bot, trigger):
+@module.interval(3600)
+def sluttosphere_setup(bot):
     r = praw.Reddit(user_agent='sopel_get_titty_pic')
-    subreddits = ['boobs', 'gonemild', 'tits', 'redheads']
-    latest_submissions = []
+    subreddits = ['boobs', 'gonemild', 'tits', 'redheads', 'brunettes']
+    global slut_links
+    slut_links = []
 
     for sub in subreddits:
         submissions = r.get_subreddit(sub).get_new(limit=15)
         for s in submissions:
             latest_submission = "[" + s.title + "] - " + s.url
-            latest_submissions.append(latest_submission)
+            slut_links.append(latest_submission)
 
-    rand_submission = "NSFW - " + random.choice(list(latest_submissions))
-    print rand_submission
-    bot.say(rand_submission)
+    print sluttosphere_setup.__name__ + " - Grabbed latest batch of slut pics"
+
+    return slut_links
+  
+@module.rate(20)
+@module.commands('tittypic')
+def sluttosphere(bot, trigger):
+    try:
+        rand_submission = "NSFW - " + random.choice(slut_links)
+        print sluttosphere.__name__ + " - " + rand_submission
+        bot.say(rand_submission)
+    except (KeyError, NameError):
+        errmsg = "Got no sluts yet" 
+        bot.say(errmsg)
+        dummy_arg = None
+        sluttosphere_setup(dummy_arg)
