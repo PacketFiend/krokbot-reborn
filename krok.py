@@ -414,7 +414,7 @@ def sluttosphere(bot, trigger):
         rand_submission = "NSFW - " + random.choice(slut_links)
         print sluttosphere.__name__ + " - " + rand_submission
         bot.say(rand_submission)
-    except (KeyError, NameError):
+    except (KeyError, IndexError, NameError):
         errmsg = "Got no sluts yet" 
         bot.say(errmsg)
         dummy_arg = None
