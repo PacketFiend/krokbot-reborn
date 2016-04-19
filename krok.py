@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+#
+# Name:    krok.py
+# Author:  Syini666, ekim
+# Date:    Various dates in 2015/2016
+# Summary: krokbot: evil AI
+#
 
 from sopel import module, tools
 import sqlite3
@@ -388,34 +394,3 @@ def random_yo_callable(bot, trigger):
     rand_yo = "yo " + rand_nick 
     bot.msg(channel, rand_yo, 1)
     bot.msg(channel, rand_krok, 1)
-
-# Reddit titty pic poster
-@module.interval(3600)
-def sluttosphere_setup(bot):
-    r = praw.Reddit(user_agent='sopel_get_titty_pic')
-    subreddits = ['boobs', 'gonemild', 'tits', 'redheads', 'brunettes']
-    global slut_links
-    slut_links = []
-
-    for sub in subreddits:
-        submissions = r.get_subreddit(sub).get_new(limit=15)
-        for s in submissions:
-            latest_submission = "[" + s.title + "] - " + s.url
-            slut_links.append(latest_submission)
-
-    print sluttosphere_setup.__name__ + " - Grabbed latest batch of slut pics"
-
-    return slut_links
-  
-@module.rate(20)
-@module.commands('tittypic')
-def sluttosphere(bot, trigger):
-    try:
-        rand_submission = "NSFW - " + random.choice(slut_links)
-        print sluttosphere.__name__ + " - " + rand_submission
-        bot.say(rand_submission)
-    except (KeyError, IndexError, NameError):
-        errmsg = "Got no sluts yet" 
-        bot.say(errmsg)
-        dummy_arg = None
-        sluttosphere_setup(dummy_arg)
