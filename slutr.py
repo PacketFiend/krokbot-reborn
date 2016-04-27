@@ -43,7 +43,7 @@ def setup(bot):
 @module.interval(3600)
 def sluttosphere_setup(bot):
     r = praw.Reddit(user_agent='sopel_get_titty_pic')
-    titty_subreddits = ['boobs', 'gonemild', 'tits', 'redheads', 'brunettes']
+    titty_subreddits = ['boobs', 'gonemild', 'tits', 'redheads', 'brunettes', 'sideboob']
     clam_subreddits = ['pussy', 'rearpussy', 'pussy_girls', 'asianpussy', 'perfectpussies', 'ready_pussy', 'pussyjuices']
     global slut_links_tits
     global slut_links_clams
