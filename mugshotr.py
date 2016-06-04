@@ -44,7 +44,8 @@ def find_jailbird_name(url):
 Get arrest information
 '''
 def get_arrests():    
-    r = requests.get('http://arre.st/Mugshots/WestVirginia/Arrests/')
+    #r = requests.get('http://arre.st/Mugshots/WestVirginia/Arrests/')
+    r = requests.get('http://arre.st/Mugshots/WestVirginia/ERJ')
     found = re.findall(r"WV\-[0-9]{10}", r.text)
     found2 = re.findall(r"http://cdn\.arre\.st/Jails/WVJails\.info/tb\.php\?file=images2/[A-Za-z0-9\-]{1,}\.jpg&size=200", r.text)
 
@@ -59,18 +60,16 @@ def start_db():
 
     return session
 
+'''
+Gather latest jailbirds and dump them into a database
+'''
 @module.interval(1800)
 def latest_jailbirds(bot):
-# Get channel we're connected to
-    channel_list = []
-    conn_channels = bot.privileges
-    for channel in conn_channels:
-        if channel not in channel_list:
-            channel_list.append(channel)
-
 # find out if we have a new arrestee; if we do, add them to the db
     session = start_db()
     found = get_arrests()
+    jailbirds = []
+
     for arrestid in found:
         rs = session.query(exists().where(Jailbird.arrestid == arrestid)).scalar()
         if rs is False:
@@ -82,13 +81,40 @@ def latest_jailbirds(bot):
             try:
                 session.add(new_jailbird)
                 session.commit()
-                jlbrd_msg = "Found a new Ranson jailbird: " + jailbird_name + " " + url
-                print jlbrd_msg
-                for channel in channel_list:
-                    bot.msg(channel, jlbrd_msg, 1)
+                print "Adding new jailbird to the database: " + jailbird_name + " " + arrestid
+#               jlbrd_msg = jailbird_name + " " + url
+#                jailbirds.append(jlbrd_msg)
+                #for channel in channel_list:
+                #    bot.msg(channel, jlbrd_msg, 1)
             finally:
                 session.close()
 
+'''
+Print latest jailbirds
+'''
+@module.rate(20)
+@module.commands('jailbirds')
+def last_five_jailbirds(bot, trigger):
+# Get channel we're connected to
+    channel_list = []
+    conn_channels = bot.privileges
+    for channel in conn_channels:
+        if channel not in channel_list:
+            channel_list.append(channel)
+
+    session = start_db()
+    rs = session.query(Jailbird).order_by(Jailbird.id.desc()).limit(5)
+    if rs:
+        bot.say("Latest Ranson jailbirds:")
+        for jailbird in rs:
+            jailbird = jailbird.name + "http://arre.st/" + jailbird.arrestid
+            bot.say(jailbird)
+    else:
+        bot.say("No new arrests in Ranson!")
+
+'''
+Print a random jailbird
+'''
 @module.rate(20)
 @module.commands('jailbird')
 def random_jailbird(bot, trigger):
@@ -102,3 +128,6 @@ def random_jailbird(bot, trigger):
     rnd_jailbird = session.query(Jailbird).get(rnd)
     jlbrd_msg = rnd_jailbird.name + " http://arre.st/" + rnd_jailbird.arrestid
     bot.say(jlbrd_msg)
+
+if __name__ == "__main__":
+    latest_jailbirds()
