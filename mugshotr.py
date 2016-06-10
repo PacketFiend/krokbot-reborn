@@ -82,10 +82,6 @@ def latest_jailbirds(bot):
                 session.add(new_jailbird)
                 session.commit()
                 print "Adding new jailbird to the database: " + jailbird_name + " " + arrestid
-#               jlbrd_msg = jailbird_name + " " + url
-#                jailbirds.append(jlbrd_msg)
-                #for channel in channel_list:
-                #    bot.msg(channel, jlbrd_msg, 1)
             finally:
                 session.close()
 
