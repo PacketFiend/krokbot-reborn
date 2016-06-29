@@ -256,6 +256,7 @@ def talk_shit(bot, trigger):
 		cnt += 1
 	if cnt == 0:
 		ret_quote = "you look like an asshole I've never seen before"
+		clean_quote = ret_quote # fix for bug found on 2016-06-28 when nick s0b addressed the bot
 	else:
 		quote = randint(0,cnt)
 
