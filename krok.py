@@ -232,12 +232,14 @@ def krokquote(bot, trigger):
     x = 0
     items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
     for q in items:
-        if x == rnd:
+        if q[0] == rnd:
             quote = str(q[1])
             q_id = str(q[0])
             x += 1
-
-    return_quote = "("+q_id+") "+quote
+    try: 
+	    return_quote = "("+q_id+") "+quote
+    except:
+	    return_quote = "Nice going asshole, way to fuck it up"
 
     rq_clean = return_quote.replace("\\'",",")
     bot.say(rq_clean)
