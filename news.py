@@ -44,7 +44,6 @@ class headlineList:
 		for term in self.searchList:
 			self.wordlist = self.wordlist + " " + term
 
-		bot.msg(channel, nick + ", now searchnig for these words: " + self.wordlist)
 		print self.searchList
 	
 	def remove_searchTerm(self,searchTerm,nick,channel,bot):
@@ -56,14 +55,15 @@ class headlineList:
 		self.wordlist = ""
 		for term in self.searchList:
 			self.wordlist = self.wordlist + " " + term
-		bot.msg(channel, nick + ", now searching for these terms: " + self.wordlist)
+
 		print self.searchList
 	
+	# Find any headlines with matching keywords. Search is case sensitive, so we convert to lowercase before searching.
 	def find_hits(self):
 	    hits = []
 	    for headline in self.headlines:
 	        for term in self.searchList:
-	            if term in headline:
+	            if term.lower() in headline.lower():
 	                hits.append(headline)
 	            else:
 	                pass
@@ -80,12 +80,16 @@ def addtoheadlines(bot, trigger):
 	for term in shard:
 		defaultHeadlines.add_searchTerm(term,trigger.nick,trigger.sender,bot)
 
+	bot.msg(trigger.sender, trigger.nick + ", now searchnig for these words: " + defaultHeadlines.wordlist)
+
 @module.commands('removefromheadlines')
 def removefromheadlines(bot, trigger):
 	imp = trigger.group(2)
 	shard = imp.split(" ")
 	for term in shard:
 		defaultHeadlines.remove_searchTerm(term,trigger.nick,trigger.sender,bot)
+
+	bot.msg(trigger.sender, trigger.nick + ", now searchnig for these words: " + defaultHeadlines.wordlist)
 
 # Function to fetch the rss feed and return the parsed RSS
 def parseRSS( rss_url ):
