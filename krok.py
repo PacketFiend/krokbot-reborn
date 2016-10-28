@@ -13,11 +13,10 @@ import time
 from random import randint
 
 import sys
-#import twitter
+import twitter
 import requests
 from geopy.geocoders import Nominatim
 import praw
-import tinyurl
 
 import kgen
 import creds
@@ -28,10 +27,10 @@ def echo(bot, trigger):
 	bot.reply(trigger.group(2))
 """
 
-#api = twitter.Api(consumer_key=creds.tw_consumer_key,
-#	consumer_secret=creds.tw_consumer_secret,
-#	access_token_key=creds.tw_access_token_key,
-#	access_token_secret=creds.tw_access_token_secret)
+api = twitter.Api(consumer_key=creds.tw_consumer_key,
+	consumer_secret=creds.tw_consumer_secret,
+	access_token_key=creds.tw_access_token_key,
+	access_token_secret=creds.tw_access_token_secret)
 
 geolocator = Nominatim()
 
