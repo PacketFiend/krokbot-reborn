@@ -99,6 +99,7 @@ def calculateChannelActivity(bot):
 		for timer in defaultTimer[channel].timers:
 			if timer.finished.is_set():
 				print timer.name + " is stopped. Deleting it."
+				defaultTimer[channel].timers.remove(timer)
 				del timer
 
 
