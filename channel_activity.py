@@ -32,9 +32,11 @@ class channelActivity:
 		self.channelActivityCounterLog = 0
 		self.channelActivityExp = 0
 		self.channelActivityLog = 0
-		self.logFactor = 20						# The multiple used in the logarithmic decay function
-		self.expFactor = 0.01						# The multiple used in the exponential decay funciton
+		self.logFactor = 50						# The multiple used in the logarithmic decay function
+		self.expFactor = 0.002						# The multiple used in the exponential decay funciton
 		self.powFactor = 3						# channelActivityCounterExp is raised to this power
+		self.expDecayFactor = 200.0					# Default setting will cause the exponential counter to decay to 0 in one hour
+		self.logDecayFactor = 5.0					# Default setting will cause the logarithmic counter to decay to 0 in five minutes
 
 	# Increment all counters, and set timers to decrement them at the appropriate times
 	def newMessage(self):
@@ -93,7 +95,7 @@ class channelActivity:
 		print "Log counter: " + str(self.channelActivityCounterLog) + "; exp counter: " + str(self.channelActivityCounterExp)
 
 		self.channelActivityExp = math.pow(self.channelActivityCounterExp,self.powFactor) * self.expFactor
-		if self.channelActivityCounterLog == 0: self.channelActivityLog = 0 	# log(0) is undefined
+		if self.channelActivityCounterLog < 1: self.channelActivityLog = 0 	# log(0) is undefined, and we don't want negative numbers here
 		else: self.channelActivityLog = self.logFactor * math.log(self.channelActivityCounterLog)
 		self.channelActivitySum = self.channelActivityExp + self.channelActivityLog
 
@@ -152,24 +154,26 @@ def show_channel_activity(bot, trigger):
 	print str(numTimers) + " timers active, " + str(len(defaultTimer[channel].timers)) + " total"
 
 @module.thread(True)
-@module.interval(30)
+@module.interval(5)
 def decay_counter_exp(bot):
-	'''Runs every 30 seconds and decays the activity counter'''
+	'''Runs every 5 seconds and decays the activity counter'''
 	print "Decaying exp counter..."
 
 	for channel in defaultTimer:
 		if defaultTimer[channel].channelActivityCounterExp > 0:
-			defaultTimer[channel].channelActivityCounterExp -= 1
+			# Will decay completely in one hour unless expDecayFactor is changed
+			print "Exponential decay factor is " + str(defaultTimer[channel].expDecayFactor) + ". Decaying by " + str(defaultTimer[channel].channelActivityCounterExp / defaultTimer[channel].expDecayFactor) + " every 5 seconds."
+			print "channelActivityCounterExp is " + str(defaultTimer[channel].channelActivityCounterExp)
+			defaultTimer[channel].channelActivityCounterExp -= (defaultTimer[channel].channelActivityCounterExp / defaultTimer[channel].expDecayFactor)
 
-@module.thread(True)
-@module.interval(5)
-def decay_counter_log(bot):
-	''' Runs every 5 seconds and decays the logarithmic activity counter'''
 	print "Decaying log counter..."
 
 	for channel in defaultTimer:
 		if defaultTimer[channel].channelActivityCounterLog > 0:
-			defaultTimer[channel].channelActivityCounterLog -= 1
+			# Will decay completely in five minutes unless logDecayFactor is changed
+			print "Logarithmic decay factor is " + str(defaultTimer[channel].logDecayFactor) + ". Decaying by " + str(defaultTimer[channel].channelActivityCounterLog / defaultTimer[channel].logDecayFactor) + " every 5 seconds."
+			print "channelActivityCounterLog is " + str(defaultTimer[channel].channelActivityCounterLog)
+			defaultTimer[channel].channelActivityCounterLog -= defaultTimer[channel].channelActivityCounterLog / defaultTimer[channel].logDecayFactor
 
 # Changes the factors used in the logarithmic decay function
 @module.commands('logfactor')
@@ -202,3 +206,25 @@ def exp_factor(bot, trigger):
 	print "Setting expFactor to " + str(factor)
 	for channel in defaultTimer:
 		defaultTimer[channel].expFactor = factor
+
+# Changes the exponential decay factor, affecting how long the counter takes to approach 0
+@module.commands('expdecay')
+@module.require_admin
+def exp_decay(bot, trigger):
+	'''Changes the exponential decay factor, affecting how long the counter takes to approach 0'''
+
+	factor = float(trigger.group(2))
+	for channel in defaultTimer:
+		print "Changing exponential decay factor for " + channel + " to " + str(factor)
+		defaultTimer[channel].expDecayFactor = factor
+
+# Changes the logarithmic decay factor, affecting how long the counter takes to approach
+@module.commands('logdecay')
+@module.require_admin
+def log_decay(bot, trigger):
+	'''Changes the logarithmic decay factor, affecting how long the counter takes to approach 0'''
+
+	factor = float(trigger.group(2))
+	for channel in defaultTimer:
+		print "Changing logarithmic decay factor for " + channel + " to " + str(factor)
+		defaultTimer[channel].logDecayFactor = factor
