@@ -100,7 +100,7 @@ class channelActivity:
 defaultTimer = {} # channelActivity('defaultTimer')
 
 # Counts the number of messages per channel and calculate activity on every message
-@module.rule('[^\.].*')
+@module.rule('[^\.!].*')
 def countMessages(bot, trigger):
 
 	channel = str(trigger.sender.lstrip('#'))
