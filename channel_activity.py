@@ -162,7 +162,7 @@ def decay_counter_exp(bot):
 	for channel in defaultTimer:
 		if defaultTimer[channel].channelActivityCounterExp > 0:
 			# Will decay completely in one hour unless expDecayFactor is changed
-			print "Exponential decay factor is " + str(defaultTimer[channel].expDecayFactor) + ". Decaying by " + str(defaultTimer[channel].channelActivityCounterExp / defaultTimer[channel].expDecayFactor) + " every 5 seconds."
+			print "Exponential decay factor for #" + channel + " is " + str(defaultTimer[channel].expDecayFactor) + ". Decaying by " + str(defaultTimer[channel].channelActivityCounterExp / defaultTimer[channel].expDecayFactor) + " every 5 seconds."
 			print "channelActivityCounterExp is " + str(defaultTimer[channel].channelActivityCounterExp)
 			defaultTimer[channel].channelActivityCounterExp -= (defaultTimer[channel].channelActivityCounterExp / defaultTimer[channel].expDecayFactor)
 
@@ -171,7 +171,7 @@ def decay_counter_exp(bot):
 	for channel in defaultTimer:
 		if defaultTimer[channel].channelActivityCounterLog > 0:
 			# Will decay completely in five minutes unless logDecayFactor is changed
-			print "Logarithmic decay factor is " + str(defaultTimer[channel].logDecayFactor) + ". Decaying by " + str(defaultTimer[channel].channelActivityCounterLog / defaultTimer[channel].logDecayFactor) + " every 5 seconds."
+			print "Logarithmic decay factor for #" + channel + " is " + str(defaultTimer[channel].logDecayFactor) + ". Decaying by " + str(defaultTimer[channel].channelActivityCounterLog / defaultTimer[channel].logDecayFactor) + " every 5 seconds."
 			print "channelActivityCounterLog is " + str(defaultTimer[channel].channelActivityCounterLog)
 			defaultTimer[channel].channelActivityCounterLog -= defaultTimer[channel].channelActivityCounterLog / defaultTimer[channel].logDecayFactor
 
