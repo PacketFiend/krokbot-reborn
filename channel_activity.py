@@ -42,21 +42,23 @@ class channelActivity:
 		print counter
 
 		self.messages[counter] = self.messages[counter] - 1
+
+		# Previous timers are subtracted explicity (600-60) for readability
 		if counter == channelActivity.dictionary['onehour']:
 			pass
 		elif counter == channelActivity.dictionary['tenseconds']:
 			self.messages[counter+1] += 1
-			t = threading.Timer(60, self.decrementMessageCount, args=[channelActivity.dictionary['oneminute']])
+			t = threading.Timer(60-10, self.decrementMessageCount, args=[channelActivity.dictionary['oneminute']])
 			t.start()
 			self.timers.append(t)
 		elif counter == channelActivity.dictionary['oneminute']:
 			self.messages[counter+1] += 1
-			t = threading.Timer(600, self.decrementMessageCount, args=[channelActivity.dictionary['tenminutes']])
+			t = threading.Timer(600-60, self.decrementMessageCount, args=[channelActivity.dictionary['tenminutes']])
 			t.start()
 			self.timers.append(t)
 		elif counter == channelActivity.dictionary['tenminutes']:
 			self.messages[counter+1] += 1
-			t = threading.Timer(3600, self.decrementMessageCount, args=[channelActivity.dictionary['onehour']])
+			t = threading.Timer(3600-600, self.decrementMessageCount, args=[channelActivity.dictionary['onehour']])
 			t.start()
 			self.timers.append(t)
 
