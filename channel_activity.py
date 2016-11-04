@@ -128,7 +128,7 @@ def calculateChannelActivity(bot):
 				del timer
 
 
-@module.commands('show_channel_activity')
+@module.commands('activity')
 def show_channel_activity(bot, trigger):
 	'''Prints the current channel activity level to the channel it's called in'''
 
