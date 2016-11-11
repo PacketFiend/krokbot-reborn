@@ -40,7 +40,7 @@ class channelActivity:
 
 	# Increment all counters, and set timers to decrement them at the appropriate times
 	def newMessage(self):
-		print self.messages
+		#print self.messages
 		self.messages[channelActivity.dictionary['tenseconds']] += 1
 		self.channelActivityCounterExp += 1
 		self.channelActivityCounterLog += 1
@@ -51,8 +51,8 @@ class channelActivity:
 
 	# Decrement the message count, place that message in the next queue, and start a new timer for it
 	def decrementMessageCount(self, counter):
-		print "Decrementing..."
-		print counter
+		#print "Decrementing..."
+		#print counter
 
 		self.messages[counter] = self.messages[counter] - 1
 
@@ -92,7 +92,7 @@ class channelActivity:
 		else:
 			print "Oops! What the fuck did you do?!?!"
 
-		print "Log counter: " + str(self.channelActivityCounterLog) + "; exp counter: " + str(self.channelActivityCounterExp)
+		#print "Log counter: " + str(self.channelActivityCounterLog) + "; exp counter: " + str(self.channelActivityCounterExp)
 
 		self.channelActivityExp = math.pow(self.channelActivityCounterExp,self.powFactor) * self.expFactor
 		if self.channelActivityCounterLog < 1: self.channelActivityLog = 0 	# log(0) is undefined, and we don't want negative numbers here
@@ -107,7 +107,7 @@ def countMessages(bot, trigger):
 
 	channel = str(trigger.sender.lstrip('#'))
 
-	print "Channel: " + channel + "; trigger.sender: " + trigger.sender
+	#print "Channel: " + channel + "; trigger.sender: " + trigger.sender
 	if not channel in defaultTimer:
 		defaultTimer[channel] = channelActivity(channel)
 
@@ -123,7 +123,7 @@ def calculateChannelActivity(bot):
 		# At least -try- to delete the old timers. Dumbass Python.
 		for timer in defaultTimer[channel].timers:
 			if timer.finished.is_set():
-				print timer.name + " is stopped. Deleting it."
+				#print timer.name + " is stopped. Deleting it."
 				defaultTimer[channel].timers.remove(timer)
 				del timer
 
@@ -139,8 +139,7 @@ def show_channel_activity(bot, trigger):
 	defaultTimer[channel].calculateChannelActivity(bot, trigger.sender)
 	if not arg:
 		bot.msg(trigger.sender, trigger.nick + ", current channel activity level is " + str(defaultTimer[channel].channelActivity) 
-		        + " and sum of exp,log is " + str(defaultTimer[channel].channelActivitySum) + " (" + str(defaultTimer[channel].channelActivityExp) + "+" + str(defaultTimer[channel].channelActivityLog) + ")" 
-			+ " based on " + str(defaultTimer[channel].channelActivityCounterExp) + "," + str(defaultTimer[channel].channelActivityCounterLog))
+		        + ", but the better metric is " + str(defaultTimer[channel].channelActivitySum))
 	else:
 		print "Showing stats for " + arg
 		bot.msg(trigger.sender, trigger.nick + ", current channel activity level is " + str(defaultTimer[arg].channelActivity) 
@@ -157,22 +156,19 @@ def show_channel_activity(bot, trigger):
 @module.interval(5)
 def decay_counter_exp(bot):
 	'''Runs every 5 seconds and decays the activity counter'''
-	print "Decaying exp counter..."
 
 	for channel in defaultTimer:
 		if defaultTimer[channel].channelActivityCounterExp > 0:
 			# Will decay completely in one hour unless expDecayFactor is changed
-			print "Exponential decay factor for #" + channel + " is " + str(defaultTimer[channel].expDecayFactor) + ". Decaying by " + str(defaultTimer[channel].channelActivityCounterExp / defaultTimer[channel].expDecayFactor) + " every 5 seconds."
-			print "channelActivityCounterExp is " + str(defaultTimer[channel].channelActivityCounterExp)
+			#print "Exponential decay factor for #" + channel + " is " + str(defaultTimer[channel].expDecayFactor) + ". Decaying by " + str(defaultTimer[channel].channelActivityCounterExp / defaultTimer[channel].expDecayFactor) + " every 5 seconds."
+			#print "channelActivityCounterExp is " + str(defaultTimer[channel].channelActivityCounterExp)
 			defaultTimer[channel].channelActivityCounterExp -= (defaultTimer[channel].channelActivityCounterExp / defaultTimer[channel].expDecayFactor)
-
-	print "Decaying log counter..."
 
 	for channel in defaultTimer:
 		if defaultTimer[channel].channelActivityCounterLog > 0:
 			# Will decay completely in five minutes unless logDecayFactor is changed
-			print "Logarithmic decay factor for #" + channel + " is " + str(defaultTimer[channel].logDecayFactor) + ". Decaying by " + str(defaultTimer[channel].channelActivityCounterLog / defaultTimer[channel].logDecayFactor) + " every 5 seconds."
-			print "channelActivityCounterLog is " + str(defaultTimer[channel].channelActivityCounterLog)
+			#print "Logarithmic decay factor for #" + channel + " is " + str(defaultTimer[channel].logDecayFactor) + ". Decaying by " + str(defaultTimer[channel].channelActivityCounterLog / defaultTimer[channel].logDecayFactor) + " every 5 seconds."
+			#print "channelActivityCounterLog is " + str(defaultTimer[channel].channelActivityCounterLog)
 			defaultTimer[channel].channelActivityCounterLog -= defaultTimer[channel].channelActivityCounterLog / defaultTimer[channel].logDecayFactor
 
 # Changes the factors used in the logarithmic decay function
