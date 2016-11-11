@@ -17,6 +17,7 @@ import tinyurl
 
 import creds
 import feedparser
+import channel_activity
 """
 @module.commands('echo','repeat')
 def echo(bot, trigger):
@@ -106,6 +107,7 @@ defaultHeadlines = headlineList('default')
 @module.commands('addtoheadlines')
 def addtoheadlines(bot, trigger):
 	"""Adds a new search term to the headline search. Multiple terms can be added at once."""
+	print sys.path
 	if news == False: return
 
 	imp = trigger.group(2)

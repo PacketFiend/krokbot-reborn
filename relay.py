@@ -58,8 +58,12 @@ def relayMessages(bot, trigger):
 	global relayChannels
 	currentChannel = str(trigger.sender.lstrip('#'))
 
-	print relayChannels
-	print currentChannel
+	#print relayChannels
+	#print currentChannel
+
+	# If this channel is no longer being relayed, remove it from the dictionary
+	if not relayChannels[currentChannel]:
+		del relayChannels[currentChannel]
 	# Are we relaying FROM the current channel?
 	if currentChannel in relayChannels:
 		# Yes, and we're relaying To these channels
