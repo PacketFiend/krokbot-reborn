@@ -2,7 +2,8 @@
 # Name:    antiDDoS.py
 # Author:  Striek
 # Date:    November 2016
-# Summary: krokbot: evil AI
+# Summary: krokbot module to manage channel limit automatically, based on the current number of users plus a margin
+#	   used as an anti-DDoS measure.
 #
 
 from sopel import module, tools
@@ -12,7 +13,7 @@ import sys
 import threading
 
 global limitMargin
-limitMargin = 0
+limitMargin = 2
 global lockedChannels
 lockedChannels = []
 
@@ -42,7 +43,7 @@ def show_users(bot, trigger):
 @module.unblockable
 @module.rule('.*')
 def userPart(bot, trigger):
-	# Sets a new channel user limit every time a user joins a channel in which the bot is at least a halfop
+	# Sets a new channel user limit every time a user parts a channel in which the bot is at least a halfop
 	# The new limit will be equal to the number of users in the channel, plus a margin which can be changed in setLimitMargin
 
 	global limitMargin
@@ -125,6 +126,7 @@ def unlockChannelLimit(bot, trigger):
 	if trigger.sender in lockedChannels:
 		lockedChannels.remove(trigger.sender)
 		bot.msg(trigger.sender, trigger.nick + ", channel limit for " + trigger.sender + " has been unlocked")
+		# Reset the channel limit
 		userJoin(bot, trigger)
 	else:
 		bot.msg(trigger.sender, trigger.nick + ", this channel limit is already unlocked, dumbass.")
