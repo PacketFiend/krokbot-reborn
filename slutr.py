@@ -7,32 +7,15 @@
 #
 
 from sopel import module, tools
-import sqlite3
 import random
 import time
 from random import randint
 
 import sys
-import twitter
 import requests
-from geopy.geocoders import Nominatim
 import praw
 
-import kgen
-import creds
 import feedparser
-"""
-@module.commands('echo','repeat')
-def echo(bot, trigger):
-	bot.reply(trigger.group(2))
-"""
-
-api = twitter.Api(consumer_key=creds.tw_consumer_key,
-	consumer_secret=creds.tw_consumer_secret,
-	access_token_key=creds.tw_access_token_key,
-	access_token_secret=creds.tw_access_token_secret)
-
-geolocator = Nominatim()
 
 # Define some memory dicts/lists for keeping track of users
 def setup(bot):
@@ -55,7 +38,7 @@ def sluttosphere_setup(bot):
         for s in submissions1:
             latest_submission = "[" + s.title + "] - " + s.url
             slut_links_tits.append(latest_submission)
-        
+
     for sub in clam_subreddits:
         submissions2 = r.get_subreddit(sub).get_new(limit=15)
         for s in submissions2:
@@ -69,7 +52,7 @@ def sluttosphere_setup(bot):
         print titties
 
     return (slut_links_tits, slut_links_clams)
-  
+
 @module.rate(20)
 @module.commands('tittypic')
 def sluttosphere_tits(bot, trigger):
@@ -78,7 +61,7 @@ def sluttosphere_tits(bot, trigger):
         print sluttosphere_tits.__name__ + " - " + rand_submission
         bot.say(rand_submission)
     except (KeyError, IndexError, NameError):
-        errmsg = "Got no sluts yet" 
+        errmsg = "Got no sluts yet"
         bot.say(errmsg)
         dummy_arg = None
         sluttosphere_setup(dummy_arg)
@@ -91,7 +74,7 @@ def sluttosphere_clams(bot, trigger):
         print sluttosphere_clams.__name__ + " - " + rand_submission
         bot.say(rand_submission)
     except (KeyError, IndexError, NameError):
-        errmsg = "Got no pink tacos yet" 
+        errmsg = "Got no pink tacos yet"
         bot.say(errmsg)
         dummy_arg = None
         sluttosphere_setup(dummy_arg)
