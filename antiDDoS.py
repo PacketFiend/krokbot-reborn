@@ -6,7 +6,8 @@
 #	   used as an anti-DDoS measure.
 #
 
-from sopel import module, tools
+from sopel import module, tools, bot
+from sopel.tools.target import User, Channel
 import random	# We might decide to only sample 1 in 10 messages or something
 from random import randint
 import sys
@@ -47,6 +48,7 @@ def userPart(bot, trigger):
 	# The new limit will be equal to the number of users in the channel, plus a margin which can be changed in setLimitMargin
 
 	global limitMargin
+	global lockedChannels
 	if bot.privileges[trigger.sender][bot.nick] < module.HALFOP:
 		print "Can't set the channel limit, as I'm not at leaft a halfop in " + trigger.sender
 		return
@@ -56,10 +58,7 @@ def userPart(bot, trigger):
 		return
 
 	# Calculate the new channel limit to be the number of users plus the margin we specified, tracked as limitMargin
-	newLimit = len(bot.users) + limitMargin
-	print "I see the following users in " + trigger.sender
-	for user in bot.users:
-		print trigger.sender, "*" + user + "*"
+	newLimit = len(bot.channels[trigger.sender].users) + limitMargin
 
 	bot.msg(trigger.sender, "Setting channel limit to " + str(newLimit))
 	# Set the new channel limit
@@ -83,10 +82,7 @@ def userJoin(bot, trigger):
 		return
 
 	# Calculate the new channel limit to be the number of users plus the margin we specified, tracked as limitMargin
-	newLimit = len(bot.users) + limitMargin
-	print "I see the following users in " + trigger.sender
-	for user in bot.users:
-		print trigger.sender, "*" + user + "*"
+	newLimit = len(bot.channels[trigger.sender].users) + limitMargin
 
 	bot.msg(trigger.sender, "Setting channel limit to " + str(newLimit))
 	# Set the new channel limit
@@ -112,7 +108,7 @@ def lockChannelLimit(bot, trigger):
 	global limitMargin
 	if not trigger.sender in lockedChannels:
 		lockedChannels.append(trigger.sender)
-		bot.msg(trigger.sender, trigger.nick + ", channel limit for " + trigger.sender + " is locked down at " + str(len(bot.users) + limitMargin))
+		bot.msg(trigger.sender, trigger.nick + ", channel limit for " + trigger.sender + " is locked down at " + str(len(bot.channels[trigger.sender].users) + limitMargin))
 	else:
 		bot.msg(trigger.sender, trigger.nick + ", this channel limit is already locked, dumbass.")
 
