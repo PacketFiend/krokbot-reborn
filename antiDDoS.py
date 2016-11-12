@@ -117,8 +117,7 @@ def setChannelLimit(bot, channel):
 		return
 	# Calculate the new channel limit to be the number of users plus the margin we specified, tracked as limitMargin
 	newLimit = len(bot.channels[channel].users) + limitMargin
-	bot.msg(channel, "Setting channel limit to " + str(newLimit))
+	#bot.msg(channel, "Setting channel limit to " + str(newLimit))
 
 	# Set the new channel limit
 	bot.write(['MODE', channel , "+l" , str(newLimit)])
-
