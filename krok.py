@@ -21,11 +21,13 @@ import praw
 import kgen
 import creds
 import feedparser
-"""
-@module.commands('echo','repeat')
-def echo(bot, trigger):
-	bot.reply(trigger.group(2))
-"""
+
+from sqlalchemy import (create_engine, Table, Column, Integer, String, MetaData, ForeignKey, exc)
+from sqlalchemy.sql import (select, exists)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
 
 api = twitter.Api(consumer_key=creds.tw_consumer_key,
 	consumer_secret=creds.tw_consumer_secret,
@@ -135,7 +137,7 @@ def shootout(bot, trigger):
 @module.commands('krokquote')
 def krokquote(bot, trigger):
     """ usage: !krokquote """
-    conn = sqlite3.connect('krokquotes.db')
+    conn = engine.connect()
     items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
     i = 0
     for row in items:
@@ -162,7 +164,7 @@ def krokquote(bot, trigger):
 def talk_shit(bot, trigger):
 	#response = "Hey "+trigger.nick+", go fuck yourself!"
 	#bot.say(response)
-	conn = sqlite3.connect('krokquotes.db')
+	conn = engine.connect()
 	name = trigger.nick
 	items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
 
@@ -201,7 +203,7 @@ def deeplove(bot, trigger):
     """ usage: !deeplove <nick> """
     clean_quote = ''
     ret_quote = ''
-    conn = sqlite3.connect('krokquotes.db')
+    conn = engine.connect()
     nickarg = trigger.args[1].split()
     try:
         name = nickarg[1]
@@ -247,7 +249,7 @@ def deeplove(bot, trigger):
 
 # grab a random quote
 def random_krok():
-    conn = sqlite3.connect('krokquotes.db')
+    conn = engine.connect()
     items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
     i = 0
     for row in items:
