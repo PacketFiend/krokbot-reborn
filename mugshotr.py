@@ -43,11 +43,10 @@ def find_jailbird_name(url):
 '''
 Get arrest information
 '''
-def get_arrests():    
-    #r = requests.get('http://arre.st/Mugshots/WestVirginia/Arrests/')
+def get_arrests():
     r = requests.get('http://arre.st/Mugshots/WestVirginia/ERJ')
     found = re.findall(r"WV\-[0-9]{10}", r.text)
-    found2 = re.findall(r"http://cdn\.arre\.st/Jails/WVJails\.info/tb\.php\?file=images2/[A-Za-z0-9\-]{1,}\.jpg&size=200", r.text)
+    #found2 = re.findall(r"http://cdn\.arre\.st/Jails/WVJails\.info/tb\.php\?file=images2/[A-Za-z0-9\-]{1,}\.jpg&size=200", r.text)
 
     return found
 
@@ -70,7 +69,7 @@ def latest_jailbirds(bot):
     found = get_arrests()
     jailbirds = []
 
-    for arrestid in found:
+    def add_new_jailbirds(arrestid):
         rs = session.query(exists().where(Jailbird.arrestid == arrestid)).scalar()
         if rs is False:
             url = "http://arre.st/" + arrestid
@@ -84,6 +83,7 @@ def latest_jailbirds(bot):
                 print "Adding new jailbird to the database: " + jailbird_name + " " + arrestid
             finally:
                 session.close()
+    map(add_new_jailbirds, found)
 
 '''
 Print latest jailbirds
@@ -92,11 +92,9 @@ Print latest jailbirds
 @module.commands('jailbirds')
 def last_five_jailbirds(bot, trigger):
 # Get channel we're connected to
-    channel_list = []
     conn_channels = bot.privileges
-    for channel in conn_channels:
-        if channel not in channel_list:
-            channel_list.append(channel)
+    channel_list = []
+    channel_list = [ch for ch in conn_channels if ch not in channel_list]
 
     session = start_db()
     rs = session.query(Jailbird).order_by(Jailbird.id.desc()).limit(5)
@@ -119,7 +117,7 @@ def random_jailbird(bot, trigger):
     id_count = session.query(Jailbird.id).count()
 
     rnd = randint(0,id_count)
-    
+
     # grab a random jailbird
     rnd_jailbird = session.query(Jailbird).get(rnd)
     jlbrd_msg = rnd_jailbird.name + " http://arre.st/" + rnd_jailbird.arrestid
