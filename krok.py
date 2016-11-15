@@ -104,34 +104,12 @@ def shootout(bot, trigger):
     if int(shard[0]) > 5:
         bot.say(trigger.nick + ": quit being a chomo, chomo")	
     else:
-        file = 'rockho-improved.log'
-        num_lines = sum(1 for line in open(file))
-
-        f = open(file)
-        lines = f.readlines()
-        f.close()
-
-        max =  num_lines - 1
-
-        #line = randint(0,max)
-
         limit = int(shard[0])
-        if limit > 5:
-            limit = int(5)
-            i = 1
-            while i <= limit:
-                line = randint(0,max)
-                reply = str(lines[line].decode('utf8'))
-                bot.say(reply)
-                i += 1
-        else:
-            i = 1
-            while i <= limit:
-                line = randint(0,max)
-                #print str(lines[line])
-                reply = str(lines[line].decode('utf8'))
-                bot.say(reply)
-                i += 1
+	conn = engine.connect()
+	q = "SELECT quote FROM bestkrok WHERE quote != '' ORDER BY RAND() LIMIT %s" % str(limit)
+	items = conn.execute(q)
+	for i in items:
+		bot.say(i[0])
 
 # this gets a random quote from the database
 @module.commands('krokquote')
@@ -204,7 +182,8 @@ def deeplove(bot, trigger):
     clean_quote = ''
     ret_quote = ''
     conn = engine.connect()
-    nickarg = trigger.args[1].split()
+    nickarg = str(trigger.args[1].split())
+    print nickarg
     try:
         name = nickarg[1]
         items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
