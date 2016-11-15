@@ -287,7 +287,7 @@ def random_yo_callable(bot, trigger):
     for nick in names.keys():
         if nick not in blocked_nicks:
             nicks.append(nick)
-        rand_nick = random.choice(list(nicks))
+    rand_nick = random.choice(list(nicks))
 
     rand_krok = random_krok() 
     rand_yo = "yo " + rand_nick 
