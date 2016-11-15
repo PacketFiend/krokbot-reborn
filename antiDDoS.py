@@ -11,6 +11,7 @@ from sopel.tools.target import User, Channel
 from random import randint
 import sys
 import threading
+from pprint import pprint,pformat
 
 global limitMargin
 limitMargin = 2
@@ -137,3 +138,15 @@ def setChannelLimit(bot, channel):
 
 	# Set the new channel limit
 	bot.write(['MODE', channel , "+l" , str(newLimit)])
+
+@module.commands('show_channel_users')
+@module.require_admin
+def showChannelUsers(bot, trigger):
+	''' Prints out a list of every user in the channel - for debugging purposes'''
+
+	channel = trigger.group(2)
+	bot.msg(trigger.nick, trigger.nick + ", this is the state of bot.privileges[" + str(channel) + "]:")
+	bot.msg(trigger.nick, pformat(bot.privileges[channel]))
+
+	bot.msg(trigger.nick, "And here's all of bot.privileges:")
+	bot.msg(trigger.nick, pformat(bot.privileges))
