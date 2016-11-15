@@ -13,7 +13,7 @@ import time
 from random import randint
 
 import sys
-#import twitter
+import twitter
 import requests
 from geopy.geocoders import Nominatim
 import praw
@@ -21,16 +21,18 @@ import praw
 import kgen
 import creds
 import feedparser
-"""
-@module.commands('echo','repeat')
-def echo(bot, trigger):
-	bot.reply(trigger.group(2))
-"""
 
-#api = twitter.Api(consumer_key=creds.tw_consumer_key,
-#	consumer_secret=creds.tw_consumer_secret,
-#	access_token_key=creds.tw_access_token_key,
-#	access_token_secret=creds.tw_access_token_secret)
+from sqlalchemy import (create_engine, Table, Column, Integer, String, MetaData, ForeignKey, exc)
+from sqlalchemy.sql import (select, exists)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+
+api = twitter.Api(consumer_key=creds.tw_consumer_key,
+	consumer_secret=creds.tw_consumer_secret,
+	access_token_key=creds.tw_access_token_key,
+	access_token_secret=creds.tw_access_token_secret)
 
 geolocator = Nominatim()
 
@@ -135,7 +137,7 @@ def shootout(bot, trigger):
 @module.commands('krokquote')
 def krokquote(bot, trigger):
     """ usage: !krokquote """
-    conn = sqlite3.connect('krokquotes.db')
+    conn = engine.connect()
     items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
     i = 0
     for row in items:
@@ -162,7 +164,7 @@ def krokquote(bot, trigger):
 def talk_shit(bot, trigger):
 	#response = "Hey "+trigger.nick+", go fuck yourself!"
 	#bot.say(response)
-	conn = sqlite3.connect('krokquotes.db')
+	conn = engine.connect()
 	name = trigger.nick
 	items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
 
@@ -201,7 +203,7 @@ def deeplove(bot, trigger):
     """ usage: !deeplove <nick> """
     clean_quote = ''
     ret_quote = ''
-    conn = sqlite3.connect('krokquotes.db')
+    conn = engine.connect()
     nickarg = trigger.args[1].split()
     try:
         name = nickarg[1]
@@ -247,7 +249,7 @@ def deeplove(bot, trigger):
 
 # grab a random quote
 def random_krok():
-    conn = sqlite3.connect('krokquotes.db')
+    conn = engine.connect()
     items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
     i = 0
     for row in items:
@@ -271,7 +273,6 @@ def random_yo(bot):
 # for each channel that we're in, pick a random nick out of privileges dict,
 # remove krok{b,p}ot and other blocked nicks
     channel_list = []
-    nicks = []
     conn_channels = bot.privileges
     for channel in conn_channels:
         if channel not in channel_list:
@@ -281,17 +282,16 @@ def random_yo(bot):
         if random.random() < 0.3:
             channel.encode('utf-8')
             names = bot.privileges[channel]
-            blocked_nicks = ('krokbot', 'krokpot', 'krokadil')
-	    for nick in names.keys():
-		if nick not in blocked_nicks:
-			nicks.append(nick)
-            rand_nick = random.choice(list(nicks))
+            blocked_nicks = ('krokbot', 'krokpot')
+            for bnick in blocked_nicks:
+                if bnick in names.keys():
+                    del names[bnick]
+            rand_nick = random.choice(list(names.keys()))
 
             rand_krok = random_krok() 
             rand_yo = "yo " + rand_nick 
             bot.msg(channel, rand_yo, 1)
             bot.msg(channel, rand_krok, 1)
-	    bot.msg(channel, "This is random placeholder text for random_yo()!")
         else:
             pass
 
@@ -300,19 +300,16 @@ def random_yo(bot):
 @module.commands('yo')
 def random_yo_callable(bot, trigger):
     """ usage: !yo  """
-    nicks = []
     channel = trigger.sender
     names = bot.privileges[channel]
-    blocked_nicks = ('krokbot', 'krokpot', 'krokadil')
-    for nick in names.keys():
-	if nick not in blocked_nicks:
-		nicks.append(nick)
-    rand_nick = random.choice(list(nicks))
+    blocked_nicks = ('krokbot', 'krokpot')
+    for bnick in blocked_nicks:
+        if bnick in names.keys():
+            del names[bnick]
+    rand_nick = random.choice(list(names.keys()))
 
     rand_krok = random_krok() 
     rand_yo = "yo " + rand_nick 
     bot.msg(channel, rand_yo, 1)
     bot.msg(channel, rand_krok, 1)
-    bot.msg(channel, "This is random placeholder text for random_yo_callable()!")
-
 
