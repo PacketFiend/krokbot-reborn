@@ -11,11 +11,14 @@ from sopel.tools.target import User, Channel
 from random import randint
 import sys
 import threading
+from pprint import pprint,pformat
 
 global limitMargin
 limitMargin = 2
 global lockedChannels
 lockedChannels = []
+global maxUsers
+maxUsers = 100
 
 @module.require_admin
 @module.commands('channel_limit')
@@ -103,10 +106,20 @@ def unlockChannelLimit(bot, trigger):
 	else:
 		bot.msg(trigger.sender, trigger.nick + ", this channel limit is already unlocked, dumbass.")
 
+@module.commands('max_users')
+@module.require_admin
+def maxUsers(bot, trigger):
+	'''Sets the maximum number of users that can be in any channel where this bot is at least a halfop'''
+
+	global maxUsers
+	maxUsers = int(trigger.group(2))
+	bot.msg(trigger.sender, trigger.nick + ", maximum users in any channel I'm a halfop in is now " + str(maxUsers))
+
 def setChannelLimit(bot, channel):
 	# Sets a new channel limit on the given channel based on the number of users in the channel and an operator-defined margin
 	global limitMargin
 	global lockedChannels
+	global maxUsers
 
 	if bot.privileges[channel][bot.nick] < module.HALFOP:
 		print "Can't set the channel limit, as I'm not at leaft a halfop in " + channel
@@ -116,8 +129,24 @@ def setChannelLimit(bot, channel):
 		bot.msg(channel, "Not changing the channel limit. We are locked down for now.")
 		return
 	# Calculate the new channel limit to be the number of users plus the margin we specified, tracked as limitMargin
-	newLimit = len(bot.channels[channel].users) + limitMargin
+	# Or, to the maximum number of users specified by maxUsers
+	if len(bot.channels[channel].users) + limitMargin <= maxUsers:
+		newLimit = len(bot.channels[channel].users) + limitMargin
+	else:
+		newLimit = maxUsers
 	#bot.msg(channel, "Setting channel limit to " + str(newLimit))
 
 	# Set the new channel limit
 	bot.write(['MODE', channel , "+l" , str(newLimit)])
+
+@module.commands('show_channel_users')
+@module.require_admin
+def showChannelUsers(bot, trigger):
+	''' Prints out a list of every user in the channel - for debugging purposes'''
+
+	channel = trigger.group(2)
+	bot.msg(trigger.nick, trigger.nick + ", this is the state of bot.privileges[" + str(channel) + "]:")
+	bot.msg(trigger.nick, pformat(bot.privileges[channel]))
+
+	bot.msg(trigger.nick, "And here's all of bot.privileges:")
+	bot.msg(trigger.nick, pformat(bot.privileges))

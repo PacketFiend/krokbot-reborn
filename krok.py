@@ -13,7 +13,7 @@ import time
 from random import randint
 
 import sys
-import twitter
+#import twitter
 import requests
 from geopy.geocoders import Nominatim
 import praw
@@ -21,18 +21,16 @@ import praw
 import kgen
 import creds
 import feedparser
+"""
+@module.commands('echo','repeat')
+def echo(bot, trigger):
+	bot.reply(trigger.group(2))
+"""
 
-from sqlalchemy import (create_engine, Table, Column, Integer, String, MetaData, ForeignKey, exc)
-from sqlalchemy.sql import (select, exists)
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-
-engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
-
-api = twitter.Api(consumer_key=creds.tw_consumer_key,
-	consumer_secret=creds.tw_consumer_secret,
-	access_token_key=creds.tw_access_token_key,
-	access_token_secret=creds.tw_access_token_secret)
+#api = twitter.Api(consumer_key=creds.tw_consumer_key,
+#	consumer_secret=creds.tw_consumer_secret,
+#	access_token_key=creds.tw_access_token_key,
+#	access_token_secret=creds.tw_access_token_secret)
 
 geolocator = Nominatim()
 
@@ -104,18 +102,40 @@ def shootout(bot, trigger):
     if int(shard[0]) > 5:
         bot.say(trigger.nick + ": quit being a chomo, chomo")	
     else:
+        file = 'rockho-improved.log'
+        num_lines = sum(1 for line in open(file))
+
+        f = open(file)
+        lines = f.readlines()
+        f.close()
+
+        max =  num_lines - 1
+
+        #line = randint(0,max)
+
         limit = int(shard[0])
-	conn = engine.connect()
-	q = "SELECT quote FROM bestkrok WHERE quote != '' ORDER BY RAND() LIMIT %s" % str(limit)
-	items = conn.execute(q)
-	for i in items:
-		bot.say(i[0])
+        if limit > 5:
+            limit = int(5)
+            i = 1
+            while i <= limit:
+                line = randint(0,max)
+                reply = str(lines[line].decode('utf8'))
+                bot.say(reply)
+                i += 1
+        else:
+            i = 1
+            while i <= limit:
+                line = randint(0,max)
+                #print str(lines[line])
+                reply = str(lines[line].decode('utf8'))
+                bot.say(reply)
+                i += 1
 
 # this gets a random quote from the database
 @module.commands('krokquote')
 def krokquote(bot, trigger):
     """ usage: !krokquote """
-    conn = engine.connect()
+    conn = sqlite3.connect('krokquotes.db')
     items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
     i = 0
     for row in items:
@@ -142,7 +162,7 @@ def krokquote(bot, trigger):
 def talk_shit(bot, trigger):
 	#response = "Hey "+trigger.nick+", go fuck yourself!"
 	#bot.say(response)
-	conn = engine.connect()
+	conn = sqlite3.connect('krokquotes.db')
 	name = trigger.nick
 	items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
 
@@ -181,9 +201,8 @@ def deeplove(bot, trigger):
     """ usage: !deeplove <nick> """
     clean_quote = ''
     ret_quote = ''
-    conn = engine.connect()
-    nickarg = str(trigger.args[1].split())
-    print nickarg
+    conn = sqlite3.connect('krokquotes.db')
+    nickarg = trigger.args[1].split()
     try:
         name = nickarg[1]
         items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
@@ -228,7 +247,7 @@ def deeplove(bot, trigger):
 
 # grab a random quote
 def random_krok():
-    conn = engine.connect()
+    conn = sqlite3.connect('krokquotes.db')
     items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
     i = 0
     for row in items:
@@ -252,6 +271,7 @@ def random_yo(bot):
 # for each channel that we're in, pick a random nick out of privileges dict,
 # remove krok{b,p}ot and other blocked nicks
     channel_list = []
+    nicks = []
     conn_channels = bot.privileges
     for channel in conn_channels:
         if channel not in channel_list:
@@ -261,16 +281,17 @@ def random_yo(bot):
         if random.random() < 0.3:
             channel.encode('utf-8')
             names = bot.privileges[channel]
-            blocked_nicks = ('krokbot', 'krokpot')
-            for bnick in blocked_nicks:
-                if bnick in names.keys():
-                    del names[bnick]
-            rand_nick = random.choice(list(names.keys()))
+            blocked_nicks = ('krokbot', 'krokpot', 'krokadil')
+	    for nick in names.keys():
+		if nick not in blocked_nicks:
+			nicks.append(nick)
+            rand_nick = random.choice(list(nicks))
 
             rand_krok = random_krok() 
             rand_yo = "yo " + rand_nick 
             bot.msg(channel, rand_yo, 1)
             bot.msg(channel, rand_krok, 1)
+	    bot.msg(channel, "This is random placeholder text for random_yo()!")
         else:
             pass
 
@@ -279,16 +300,19 @@ def random_yo(bot):
 @module.commands('yo')
 def random_yo_callable(bot, trigger):
     """ usage: !yo  """
+    nicks = []
     channel = trigger.sender
     names = bot.privileges[channel]
-    blocked_nicks = ('krokbot', 'krokpot')
-    for bnick in blocked_nicks:
-        if bnick in names.keys():
-            del names[bnick]
-    rand_nick = random.choice(list(names.keys()))
+    blocked_nicks = ('krokbot', 'krokpot', 'krokadil')
+    for nick in names.keys():
+	if nick not in blocked_nicks:
+		nicks.append(nick)
+    rand_nick = random.choice(list(nicks))
 
     rand_krok = random_krok() 
     rand_yo = "yo " + rand_nick 
     bot.msg(channel, rand_yo, 1)
     bot.msg(channel, rand_krok, 1)
+    bot.msg(channel, "This is random placeholder text for random_yo_callable()!")
+
 
