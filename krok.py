@@ -29,10 +29,10 @@ from sqlalchemy.orm import sessionmaker
 
 engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
 
-api = twitter.Api(consumer_key=creds.tw_consumer_key,
-	consumer_secret=creds.tw_consumer_secret,
-	access_token_key=creds.tw_access_token_key,
-	access_token_secret=creds.tw_access_token_secret)
+#api = twitter.Api(consumer_key=creds.tw_consumer_key,
+#	consumer_secret=creds.tw_consumer_secret,
+#	access_token_key=creds.tw_access_token_key,
+#	access_token_secret=creds.tw_access_token_secret)
 
 geolocator = Nominatim()
 
@@ -262,16 +262,17 @@ def random_yo(bot):
         if random.random() < 0.3:
             channel.encode('utf-8')
             names = bot.privileges[channel]
-            blocked_nicks = ('krokbot', 'krokpot', 'krokadil')
+            blocked_nicks = ('krokbot', 'krokpot', 'krokwhore')
             for nick in names.keys():
                 if nick not in blocked_nicks:
                         nicks.append(nick)
             rand_nick = random.choice(list(nicks))
 
-            rand_krok = random_krok() 
-            rand_yo = "yo " + rand_nick 
-            bot.msg(channel, rand_yo, 1)
-            bot.msg(channel, rand_krok, 1)
+#            rand_krok = random_krok() 
+#            rand_yo = "yo " + rand_nick 
+#            bot.msg(channel, rand_yo, 1)
+#            bot.msg(channel, rand_krok, 1)
+	    bot.msg(trigger.sender, "This is placeholder text for random_yo()!")
         else:
             pass
 
@@ -283,14 +284,15 @@ def random_yo_callable(bot, trigger):
     nicks = []
     channel = trigger.sender
     names = bot.privileges[channel]
-    blocked_nicks = ('krokbot', 'krokpot', 'krokadil')
+    blocked_nicks = ('krokbot', 'krokpot', 'krokwhore')
     for nick in names.keys():
         if nick not in blocked_nicks:
             nicks.append(nick)
     rand_nick = random.choice(list(nicks))
 
-    rand_krok = random_krok() 
-    rand_yo = "yo " + rand_nick 
-    bot.msg(channel, rand_yo, 1)
-    bot.msg(channel, rand_krok, 1)
+#    rand_krok = random_krok() 
+#    rand_yo = "yo " + rand_nick 
+#    bot.msg(channel, rand_yo, 1)
+#    bot.msg(channel, rand_krok, 1)
+    bot.msg(trigger.sender, "This is placeholder text for random_yo_callable()!")
 
