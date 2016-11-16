@@ -262,7 +262,7 @@ def random_yo(bot):
         if random.random() < 0.3:
             channel.encode('utf-8')
             names = bot.privileges[channel]
-            blocked_nicks = ('krokbot', 'krokpot', 'krokadil')
+            blocked_nicks = ('krokbot', 'krokpot', 'krokwhore')
             for nick in names.keys():
                 if nick not in blocked_nicks:
                         nicks.append(nick)
@@ -283,7 +283,7 @@ def random_yo_callable(bot, trigger):
     nicks = []
     channel = trigger.sender
     names = bot.privileges[channel]
-    blocked_nicks = ('krokbot', 'krokpot', 'krokadil')
+    blocked_nicks = ('krokbot', 'krokpot', 'krokwhore')
     for nick in names.keys():
         if nick not in blocked_nicks:
             nicks.append(nick)
