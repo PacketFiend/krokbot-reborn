@@ -159,7 +159,6 @@ def hushChannel(bot, trigger):
 	'''Sets the channel +m, and gives everyone on a predefined list voice. Used for bot parties'''
 
 	sys.path.insert(0, '.')
-	print sys.path
 	bot.msg(trigger.sender, trigger.nick + ", setting " + trigger.sender + " +m and giving all the cool kids +v")
 
 	# Set the channel +m
@@ -171,6 +170,9 @@ def hushChannel(bot, trigger):
 	for nick in coolkids:
 		bot.write(['MODE', trigger.sender, "+v", nick])
 
+	# Extra protection against KNOCKs
+	bot.write(['MODE', trigger.sender, "+Ki"])
+
 @module.commands('unhush_channel')
 @module.require_admin
 @module.priority('high')
@@ -179,14 +181,16 @@ def unHushChannel(bot, trigger):
 	'''Sets the channel -m, and removes +v from everyone on a predefined list. Used for bot parties'''
 
 	sys.path.insert(0, '.')
-	print sys.path
 	bot.msg(trigger.sender, trigger.nick + ", setting " + trigger.sender + " -m and taking +v from all the cool kids")
 
-	# Now read in a list of the cool kids, and give them all voice
+	# Now read in a list of the cool kids, and take voice from them
 	with open('coolkids.txt') as f:
 		coolkids = f.readlines()
 	for nick in coolkids:
 		bot.write(['MODE', trigger.sender, "-v", nick])
 
-	# Set the channel +m
+	# Set the channel -m
 	bot.write(['MODE', trigger.sender, "-m"])
+
+	# Remove no-KNOCK and invite
+	bot.write(['MODE', trigger.sender, "-Ki"])
