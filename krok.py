@@ -268,11 +268,10 @@ def random_yo(bot):
                         nicks.append(nick)
             rand_nick = random.choice(list(nicks))
 
-#            rand_krok = random_krok() 
-#            rand_yo = "yo " + rand_nick 
-#            bot.msg(channel, rand_yo, 1)
-#            bot.msg(channel, rand_krok, 1)
-	    bot.msg(trigger.sender, "This is placeholder text for random_yo()!")
+            rand_krok = random_krok() 
+            rand_yo = "yo " + rand_nick 
+            bot.msg(channel, rand_yo, 1)
+            bot.msg(channel, rand_krok, 1)
         else:
             pass
 
@@ -290,9 +289,8 @@ def random_yo_callable(bot, trigger):
             nicks.append(nick)
     rand_nick = random.choice(list(nicks))
 
-#    rand_krok = random_krok() 
-#    rand_yo = "yo " + rand_nick 
-#    bot.msg(channel, rand_yo, 1)
-#    bot.msg(channel, rand_krok, 1)
-    bot.msg(trigger.sender, "This is placeholder text for random_yo_callable()!")
+    rand_krok = random_krok() 
+    rand_yo = "yo " + rand_nick 
+    bot.msg(channel, rand_yo, 1)
+    bot.msg(channel, rand_krok, 1)
 
