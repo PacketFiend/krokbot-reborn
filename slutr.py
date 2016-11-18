@@ -15,8 +15,6 @@ import sys
 import requests
 import praw
 
-import feedparser
-
 # Define some memory dicts/lists for keeping track of users
 def setup(bot):
     bot.memory["user_quotes"] = {}
@@ -86,7 +84,7 @@ def sluttosphere_sideboob(bot, trigger):
         print sluttosphere_sideboob.__name__ + " - " + rand_submission
         bot.say(rand_submission)
     except (KeyError, IndexError, NameError):
-        errmsg = "Got no popping side boobs yet"
+        errmsg = "Got no poppin' side boobs yet"
         bot.say(errmsg)
         dummy_arg = None
         sluttosphere_setup(dummy_arg)
