@@ -11,7 +11,7 @@ import random
 from random import randint
 import sqlalchemy
 
-engine = sqlalchemy.create_engine("mysql+pymysql://ken:bwK9VnGxtCdd@asgard.pure-defect.com:3306/krokbot")
+engine = sqlalchemy.create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
 
 @module.commands('insult')
 def getInsult(bot, trigger):
