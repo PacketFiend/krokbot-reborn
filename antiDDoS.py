@@ -20,6 +20,10 @@ lockedChannels = []
 global maxUsers
 maxUsers = 100
 
+import sqlalchemy
+
+engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+
 @module.require_admin
 @module.commands('channel_limit')
 def channel_limit(bot, trigger):
@@ -158,20 +162,21 @@ def showChannelUsers(bot, trigger):
 def hushChannel(bot, trigger):
 	'''Sets the channel +m, and gives everyone on a predefined list voice. Used for bot parties'''
 
-	sys.path.insert(0, '.')
 	bot.msg(trigger.sender, trigger.nick + ", setting " + trigger.sender + " +m and giving all the cool kids +v")
 
-	# Set the channel +m
-	bot.write(['MODE', trigger.sender, "+m"])
+	# Set the channel +m, with exptra protection agains KNOCK flood attacks
+	bot.write(['MODE', trigger.sender, "+mKi"])
 
 	# Now read in a list of the cool kids, and give them all voice
-	with open('coolkids.txt') as f:
-		coolkids = f.readlines()
-	for nick in coolkids:
-		bot.write(['MODE', trigger.sender, "+v", nick])
+	conn = engine.connect()
+	query = "SELECT nick FROM coolkids"
+	items = conn.execute(query)
+	for entry in items:
+		# Results are returned as a tuple with an empty second element
+		nick = entry[0]
+		if nick in bot.privileges[trigger.sender]:
+			bot.write(['MODE', trigger.sender, "+v", nick])
 
-	# Extra protection against KNOCKs
-	bot.write(['MODE', trigger.sender, "+Ki"])
 
 @module.commands('unhush_channel')
 @module.require_admin
@@ -180,17 +185,18 @@ def hushChannel(bot, trigger):
 def unHushChannel(bot, trigger):
 	'''Sets the channel -m, and removes +v from everyone on a predefined list. Used for bot parties'''
 
-	sys.path.insert(0, '.')
 	bot.msg(trigger.sender, trigger.nick + ", setting " + trigger.sender + " -m and taking +v from all the cool kids")
 
-	# Now read in a list of the cool kids, and take voice from them
-	with open('coolkids.txt') as f:
-		coolkids = f.readlines()
-	for nick in coolkids:
-		bot.write(['MODE', trigger.sender, "-v", nick])
+	# Read in a list of the cool kids, and take voice from them
+	conn = engine.connect()
+	query = "SELECT nick FROM coolkids"
+	items = conn.execute(query)
+	for entry in items:
+		# Results are returned as a tuple with an empty second element
+		nick = entry[0]
+		if nick in bot.privileges[trigger.sender]:
+			bot.write(['MODE', trigger.sender, "-v", nick])
 
-	# Set the channel -m
-	bot.write(['MODE', trigger.sender, "-m"])
 
-	# Remove no-KNOCK and invite
-	bot.write(['MODE', trigger.sender, "-Ki"])
+	# Set the channel -m and remove no-KNOCK and invite
+	bot.write(['MODE', trigger.sender, "-mKi"])
