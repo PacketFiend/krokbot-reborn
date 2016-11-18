@@ -15,8 +15,6 @@ import sys
 import requests
 import praw
 
-import feedparser
-
 # Define some memory dicts/lists for keeping track of users
 def setup(bot):
     bot.memory["user_quotes"] = {}
@@ -26,9 +24,9 @@ def setup(bot):
 @module.interval(3600)
 def sluttosphere_setup(bot):
     r = praw.Reddit(user_agent='sopel_get_titty_pic')
-    titty_subreddits = ['boobs', 'gonemild', 'tits', 'redheads', 'brunettes', 'tittydrop']
+    titty_subreddits = ['boobs', 'gonemild', 'tits', 'redheads', 'brunettes', 'tittydrop', 'downblouse']
     clam_subreddits = ['pussy', 'rearpussy', 'pussy_girls', 'asianpussy', 'perfectpussies', 'ready_pussy', 'pussyjuices']
-    sideboob_subreddits = ['sideboob', 'sideboobs', 'downblouse']
+    sideboob_subreddits = ['sideboob', 'sideboobs']
     global slut_links_tits
     global slut_links_clams
     global slut_links_sideboobs
@@ -37,16 +35,16 @@ def sluttosphere_setup(bot):
     slut_links_sideboobs = []
 
     for sub in titty_subreddits:
-        submissions1 = r.get_subreddit(sub).get_new(limit=15)
-        slut_links_tits = ["[" + s.title + "] - " + s.url for s in submissions1]
+        r_posts = r.get_subreddit(sub).get_new(limit=15)
+        slut_links_tits = ["[" + s.title + "] - " + s.url for s in r_posts]
 
     for sub in clam_subreddits:
-        submissions2 = r.get_subreddit(sub).get_new(limit=15)
-        slut_links_clams = ["[" + s.title + "] -" + s.url for s in submissions2]
+        r_posts = r.get_subreddit(sub).get_new(limit=15)
+        slut_links_clams = ["[" + s.title + "] -" + s.url for s in r_posts]
 
     for sub in sideboob_subreddits:
-        submissions3 = r.get_subreddit(sub).get_new(limit=15)
-        slut_links_sideboobs = ["[" + s.title + "] - " + s.url for s in submissions3]
+        r_posts = r.get_subreddit(sub).get_new(limit=15)
+        slut_links_sideboobs = ["[" + s.title + "] - " + s.url for s in r_posts]
 
     print sluttosphere_setup.__name__ + " - Grabbed latest batch of slut pics"
 
@@ -86,7 +84,7 @@ def sluttosphere_sideboob(bot, trigger):
         print sluttosphere_sideboob.__name__ + " - " + rand_submission
         bot.say(rand_submission)
     except (KeyError, IndexError, NameError):
-        errmsg = "Got no popping side boobs yet"
+        errmsg = "Got no poppin' side boobs yet"
         bot.say(errmsg)
         dummy_arg = None
         sluttosphere_setup(dummy_arg)
