@@ -144,7 +144,8 @@ def talk_shit(bot, trigger):
 	#bot.say(response)
 	conn = engine.connect()
 	name = trigger.nick
-	items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
+	query = "SELECT id, quote FROM bestkrok WHERE quote LIKE '%%"+str(name)+"%%';"
+	items = conn.execute(query)
 
 	cnt = 0 
 	for i in items:
@@ -155,7 +156,7 @@ def talk_shit(bot, trigger):
 	else:
 		quote = randint(0,cnt)
 
-		items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
+		items = conn.execute(query)
 
 		cnt = 0
 		clean_quote = ''
@@ -178,15 +179,16 @@ def talk_shit(bot, trigger):
 @module.rate(20) # we may need to adjust this, but we dont need people spamming the command
 @module.commands('deeplove')
 def deeplove(bot, trigger):
+    from pprint import pprint
     """ usage: !deeplove <nick> """
     clean_quote = ''
     ret_quote = ''
     conn = engine.connect()
-    nickarg = str(trigger.args[1].split())
-    print nickarg
+    name = trigger.group(2)
     try:
-        name = nickarg[1]
-        items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
+	print name
+        query = "SELECT id, quote FROM bestkrok WHERE quote LIKE '%%"+str(name)+"%%';"
+	items = conn.execute(query)
 
         cnt = 0
         for i in items:
@@ -196,7 +198,8 @@ def deeplove(bot, trigger):
         else:
             quote = randint(0,cnt)
 
-            items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
+            query = "SELECT id, quote FROM bestkrok WHERE quote LIKE '%%"+str(name)+"%%';"
+            items = conn.execute(query)
 
             cnt = 0
             clean_quote = ''
