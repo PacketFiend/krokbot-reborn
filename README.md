@@ -1,0 +1,1 @@
+This shit aint professional, but so far there are useful things in the [Wiki](https://bitbucket.org/dhynes/krokbot-reborn/wiki/) so go there
