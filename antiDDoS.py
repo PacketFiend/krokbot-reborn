@@ -22,7 +22,8 @@ maxUsers = 100
 
 import sqlalchemy
 
-engine = sqlalchemy.create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+#engine = sqlalchemy.create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+engine = sqlalchemy.create_engine("mysql+pymysql://ken:bwK9VnGxtCdd@asgard.pure-defect.com:3306/krokbot")
 
 @module.require_admin
 @module.commands('channel_limit')
@@ -174,7 +175,7 @@ def hushChannel(bot, trigger):
 	for entry in items:
 		# Results are returned as a tuple with an empty second element
 		nick = entry[0]
-		if nick in bot.privileges[trigger.sender]:
+		if nick in bot.privileges[trigger.sender].keys():
 			bot.write(['MODE', trigger.sender, "+v", nick])
 
 
@@ -194,7 +195,7 @@ def unHushChannel(bot, trigger):
 	for entry in items:
 		# Results are returned as a tuple with an empty second element
 		nick = entry[0]
-		if nick in bot.privileges[trigger.sender]:
+		if nick in bot.privileges[trigger.sender].keys():
 			bot.write(['MODE', trigger.sender, "-v", nick])
 
 
