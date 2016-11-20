@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 #
 # Name:    stats.py
-# Author:  Syini666
+# Author:  Syini666, ekim
 # Date:    Various dates in 2015/2016
-# Summary: krokbot: evil AI
+# Summary: krokbot: evil AI stats of lathers, lures, and baits. Not safe for human
+#          consumption.
 #
 
+from __future__ import print_function
 from sopel import module, tools
 import sqlite3
 import random
@@ -27,6 +29,16 @@ class Lathers(Base):
     name = Column(String, primary_key=True, autoincrement=False)
     count = Column(Integer)
 
+class Lures(Base):
+    __tablename__ = 'lures'
+    name = Column(String, primary_key=True, autoincrement=False)
+    count = Column(Integer)
+
+class Baits(Base):
+    __tablename__ = 'baits'
+    name = Column(String, primary_key=True, autoincrement=False)
+    count = Column(Integer)
+
 def start_db():
     engine = create_engine('sqlite:////home/mike/.sopel/modules/stats.db')
     Session = sessionmaker()
@@ -38,75 +50,75 @@ def start_db():
 
 '''
 Insert top lather stats; Start by matching on ACTION lathers; if match found
-check if user is in the lathers table and get his current count. Increment and add
-latest score.
+check if nickname is in the lathers table and get his current count. Increment and
+add latest score. If the nickname is not present, add a new row for them with a
+count of 1.
 '''
-@module.rule('lathers (\w+)')
+@module.rule(r'\blathers\b|\blures\b|\bbaits\b (\w+)')
 @module.rate(20)
-def insert_top_lather(bot, trigger):
+def insert_top_action(bot, trigger):
     if trigger.match:
         nickname = trigger.nick
+        actions = []
+        if 'lather' in trigger.group(0):
+            table = Lathers
+            actions.append(table)
+        if 'lure' in trigger.group(0):
+            table = Lures
+            actions.append(table)
+        if 'bait' in trigger.group(0):
+            table = Baits
+            actions.append(table)
         #count = session.query(Lathers).filter_by(name=nickname).first()
-        session = start_db()
-        rs = session.query(exists().where(Lathers.name == nickname)).scalar()
-        if rs is True:
-            try:
-                session.query(Lathers).filter_by(name=nickname).update({'count': Lathers.count + 1})
-                session.commit()
-            except NameError:
-                print nickname + " not found in the database."
-            except:
-                print "Could not increment user's lather count in the database."
-            finally:
-                session.close()
-        elif rs is False:
-            print "Adding new nickname to the lather stats database: " + nickname
-            rs = Lathers(name=nickname, count=1)
-            try:
-                session.add(rs)
-                session.commit()
-            finally:
-                session.close()
 
-# get lather stats
+        for table in actions:
+            session = start_db()
+            rs = session.query(exists().where(table.name == nickname)).scalar()
+            if rs is True:
+                try:
+                    session.query(table).filter_by(name=nickname).update({'count': table.count + 1})
+                    session.commit()
+                except NameError:
+                    print("{} not found in the table.".format(nickname))
+                except:
+                    print("Could not increment user's {} count in the table.").format(table)
+                finally:
+                    session.close()
+            elif rs is False:
+                print("Adding new nickname to the {} stats table : {}".format(table, nickname))
+                try:
+                    rs = table(name=nickname, count=1)
+                    session.add(rs)
+                    session.commit()
+                except:
+                    print("Failed adding {} to the {} stats table".format(nickname, table))
+                finally:
+                    session.close()
+
+'''
+Get top stats for lather, lure, and bait. We start off with defining 3 commands.
+Then we check for those commands in the trigger.group(1) (1 being the first
+command specified in the line from the server). Based on that, we decide which
+database table we'll be querying.
+'''
 @module.rate(20)
-@module.commands('toplather')
-def get_top_lather_stats(bot, trigger):
+@module.commands('toplather', 'toplure', 'topbait')
+def get_top_stats(bot, trigger):
+    if 'lather' in trigger.group(1):
+        print("got a lather")
+        table = Lathers
+    elif 'lure' in trigger.group(1):
+        print("got a lure")
+        table = Lures
+    elif 'bait' in trigger.group(1):
+        print("got a bait")
+        table = Baits
+
     session = start_db()
-    lather_stats = {}
-    for nickname in session.query(Lathers):
-        lather_stats[nickname.name] = nickname.count
+    top_stats = {}
+    for nickname in session.query(table):
+        top_stats[nickname.name] = nickname.count
 
-    bot.reply("Top Lather Action: " + str(lather_stats))
-
-#        conn = sqlite3.connect('/home/mike/.sopel/modules/stats.db')
-#        lather_stats = []
-#        items = conn.execute("SELECT * FROM lathers ORDER BY count DESC limit 5;")
-#        for i in items:
-#                t = str(i[0]) + ": " + str(i[1])
-#                lather_stats.append(t)
-#        bot.reply("Top Lather Action: "+str(lather_stats))
-
-# get lure stats
-@module.rate(20)
-@module.commands('toplure')
-def get_top_lure_stats(bot, trigger):
-        conn = sqlite3.connect('../stats.db')
-        lure_stats = []
-        items = conn.execute("SELECT * FROM lures ORDER BY count DESC limit 5;")
-        for i in items:
-                t = str(i[0]) + ": " + str(i[1])
-                lure_stats.append(t)
-        bot.reply("Lure Leaderboard: "+str(lure_stats))
-
-# get baits stats
-@module.rate(20)
-@module.commands('topbait')
-def get_top_bait_stats(bot, trigger):
-        conn = sqlite3.connect('../stats.db')
-        bait_stats = []
-        items = conn.execute("SELECT * FROM baits ORDER BY count DESC limit 5;")
-        for i in items:
-                t = str(i[0]) + ": " + str(i[1])
-                bait_stats.append(t)
-        bot.reply("Fine Baiting: "+str(bait_stats))
+    stats = {k.encode('ascii'): v for k, v in top_stats.items()}
+    print(stats)
+    bot.reply("Top Lather Action: " + str(stats))
