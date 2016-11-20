@@ -17,6 +17,7 @@ from sqlalchemy import (create_engine, Table, Column, Integer, String, MetaData,
 from sqlalchemy.sql import (select, exists)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import config
 
 #import kgen
 #import creds
@@ -51,7 +52,8 @@ def get_arrests():
     return found
 
 def start_db():
-    engine = create_engine('sqlite:///mugshots.db')
+    #engine = create_engine('sqlite:///mugshots.db')
+    engine = create_engine('sqlite:///' + config.mugshots_db, connect_args={'check_same_thread': False})
     Session = sessionmaker()
     Session.configure(bind=engine)
     session = Session()
