@@ -105,6 +105,7 @@ def last_five_jailbirds(bot, trigger):
             bot.say(jailbird)
     else:
         bot.say("No new arrests in Ranson!")
+    session.close()
 
 '''
 Print a random jailbird
@@ -122,6 +123,7 @@ def random_jailbird(bot, trigger):
     rnd_jailbird = session.query(Jailbird).get(rnd)
     jlbrd_msg = rnd_jailbird.name + " http://arre.st/" + rnd_jailbird.arrestid
     bot.say(jlbrd_msg)
+    session.close()
 
 if __name__ == "__main__":
     latest_jailbirds()
