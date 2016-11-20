@@ -22,8 +22,7 @@ maxUsers = 100
 
 import sqlalchemy
 
-#engine = sqlalchemy.create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
-engine = sqlalchemy.create_engine("mysql+pymysql://ken:bwK9VnGxtCdd@asgard.pure-defect.com:3306/krokbot")
+engine = sqlalchemy.create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
 
 @module.require_admin
 @module.commands('channel_limit')
@@ -136,7 +135,7 @@ def setChannelLimit(bot, channel):
 	# Calculate the new channel limit to be the number of users plus the margin we specified, tracked as limitMargin
 	# Or, to the maximum number of users specified by maxUsers
 	if len(bot.channels[channel].users) + limitMargin <= maxUsers:
-		newLimit = len(bot.channels[channel].users) + limitMargin
+		newLimit = len(bot.channels[channel].users.keys()) + limitMargin
 	else:
 		newLimit = maxUsers
 	#bot.msg(channel, "Setting channel limit to " + str(newLimit))
