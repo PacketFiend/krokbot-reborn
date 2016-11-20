@@ -105,13 +105,13 @@ database table we'll be querying.
 @module.commands('toplather', 'toplure', 'topbait')
 def get_top_stats(bot, trigger):
     if 'lather' in trigger.group(1):
-        print("got a lather")
+        reply = "Top Lather Action"
         table = Lathers
     elif 'lure' in trigger.group(1):
-        print("got a lure")
+        reply = "Lure Leaderboard"
         table = Lures
     elif 'bait' in trigger.group(1):
-        print("got a bait")
+        reply = "Fine Baiting"
         table = Baits
 
     session = start_db()
@@ -121,4 +121,4 @@ def get_top_stats(bot, trigger):
 
     stats = {k.encode('ascii'): v for k, v in top_stats.items()}
     print(stats)
-    bot.reply("Top Lather Action: " + str(stats))
+    bot.reply(reply + ": " + str(stats))
