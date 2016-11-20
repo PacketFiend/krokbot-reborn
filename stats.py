@@ -40,7 +40,7 @@ class Baits(Base):
     count = Column(Integer)
 
 def start_db():
-    engine = create_engine('sqlite:///' + config.stats_db)
+    engine = create_engine('sqlite:///' + config.stats_db, connect_args={'check_same_thread': False})
     Session = sessionmaker()
     Session.configure(bind=engine)
     session = Session()
@@ -118,6 +118,7 @@ def get_top_stats(bot, trigger):
     top_stats = {}
     for nickname in session.query(table):
         top_stats[nickname.name] = nickname.count
-
+    session.close()
+    
     stats = {k.encode('ascii'): v for k, v in top_stats.items()}
     bot.reply(reply + ": " + str(stats))
