@@ -103,7 +103,7 @@ def last_five_jailbirds(bot, trigger):
     if rs:
         bot.say("Latest Ranson jailbirds:")
         for jailbird in rs:
-            jailbird = jailbird.name + "http://arre.st/" + jailbird.arrestid
+            jailbird = jailbird.name + " http://arre.st/" + jailbird.arrestid
             bot.say(jailbird)
     else:
         bot.say("No new arrests in Ranson!")
