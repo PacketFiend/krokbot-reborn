@@ -120,5 +120,4 @@ def get_top_stats(bot, trigger):
         top_stats[nickname.name] = nickname.count
 
     stats = {k.encode('ascii'): v for k, v in top_stats.items()}
-    print(stats)
     bot.reply(reply + ": " + str(stats))
