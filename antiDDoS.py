@@ -135,7 +135,7 @@ def setChannelLimit(bot, channel):
 	# Calculate the new channel limit to be the number of users plus the margin we specified, tracked as limitMargin
 	# Or, to the maximum number of users specified by maxUsers
 	if len(bot.channels[channel].users) + limitMargin <= maxUsers:
-		newLimit = len(bot.channels[channel].users) + limitMargin
+		newLimit = len(bot.channels[channel].users.keys()) + limitMargin
 	else:
 		newLimit = maxUsers
 	#bot.msg(channel, "Setting channel limit to " + str(newLimit))
@@ -174,7 +174,7 @@ def hushChannel(bot, trigger):
 	for entry in items:
 		# Results are returned as a tuple with an empty second element
 		nick = entry[0]
-		if nick in bot.privileges[trigger.sender]:
+		if nick in bot.privileges[trigger.sender].keys():
 			bot.write(['MODE', trigger.sender, "+v", nick])
 
 
@@ -194,7 +194,7 @@ def unHushChannel(bot, trigger):
 	for entry in items:
 		# Results are returned as a tuple with an empty second element
 		nick = entry[0]
-		if nick in bot.privileges[trigger.sender]:
+		if nick in bot.privileges[trigger.sender].keys():
 			bot.write(['MODE', trigger.sender, "-v", nick])
 
 
