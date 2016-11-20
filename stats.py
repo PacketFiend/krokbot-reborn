@@ -17,10 +17,10 @@ from sqlalchemy import (create_engine, Table, Column, Integer, String, MetaData,
 from sqlalchemy.sql import (select, exists)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import config
 
 '''
-The only place that the stats.db file needs to be is /home/krokbot/.sopel/
-we can reference the sqlitefile with ../stats.db
+Setup database ORM stuff. Database location is fed in via config module.
 '''
 Base = declarative_base()
 
@@ -40,7 +40,7 @@ class Baits(Base):
     count = Column(Integer)
 
 def start_db():
-    engine = create_engine('sqlite:////home/mike/.sopel/modules/stats.db')
+    engine = create_engine('sqlite:///' + config.stats_db)
     Session = sessionmaker()
     Session.configure(bind=engine)
     session = Session()
