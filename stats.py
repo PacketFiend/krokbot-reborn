@@ -93,6 +93,7 @@ def insert_top_action(bot, trigger):
                 except:
                     print("Failed adding {} to the {} stats table".format(nickname, table))
                 finally:
+                    print("What you talkin' about chamo?")
                     session.close()
 
 '''
@@ -115,10 +116,8 @@ def get_top_stats(bot, trigger):
         table = Baits
 
     session = start_db()
-    top_stats = {}
-    for nickname in session.query(table):
-        top_stats[nickname.name] = nickname.count
+    top_stats = {nickname.name: nickname.count for nickname in session.query(table)}
     session.close()
-    
+
     stats = {k.encode('ascii'): v for k, v in top_stats.items()}
     bot.reply(reply + ": " + str(stats))
