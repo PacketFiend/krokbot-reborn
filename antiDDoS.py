@@ -12,6 +12,7 @@ from random import randint
 import sys, os
 import threading
 from pprint import pprint,pformat
+from time import sleep
 
 global limitMargin
 limitMargin = 2
@@ -135,6 +136,7 @@ def setChannelLimit(bot, channel):
 	# Calculate the new channel limit to be the number of users plus the margin we specified, tracked as limitMargin
 	# Or, to the maximum number of users specified by maxUsers
 	if len(bot.channels[channel].users) + limitMargin <= maxUsers:
+		sleep(1)
 		newLimit = len(bot.channels[channel].users.keys()) + limitMargin
 	else:
 		newLimit = maxUsers
