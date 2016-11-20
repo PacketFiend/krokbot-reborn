@@ -9,8 +9,9 @@
 from sopel import module, tools, bot
 from sopel.tools.target import User, Channel
 from random import randint
-import sys
+import sys, os
 import threading
+from pprint import pprint,pformat
 
 global limitMargin
 limitMargin = 2
@@ -18,6 +19,10 @@ global lockedChannels
 lockedChannels = []
 global maxUsers
 maxUsers = 100
+
+import sqlalchemy
+
+engine = sqlalchemy.create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
 
 @module.require_admin
 @module.commands('channel_limit')
@@ -137,3 +142,61 @@ def setChannelLimit(bot, channel):
 
 	# Set the new channel limit
 	bot.write(['MODE', channel , "+l" , str(newLimit)])
+
+@module.commands('show_channel_users')
+@module.require_admin
+def showChannelUsers(bot, trigger):
+	''' Prints out a list of every user in the channel - for debugging purposes'''
+
+	channel = trigger.group(2)
+	bot.msg(trigger.nick, trigger.nick + ", this is the state of bot.privileges[" + str(channel) + "]:")
+	bot.msg(trigger.nick, pformat(bot.privileges[channel]))
+
+	bot.msg(trigger.nick, "And here's all of bot.privileges:")
+	bot.msg(trigger.nick, pformat(bot.privileges))
+
+@module.commands('hush_channel')
+@module.require_admin
+@module.priority('high')
+@module.unblockable
+def hushChannel(bot, trigger):
+	'''Sets the channel +m, and gives everyone on a predefined list voice. Used for bot parties'''
+
+	bot.msg(trigger.sender, trigger.nick + ", setting " + trigger.sender + " +m and giving all the cool kids +v")
+
+	# Set the channel +m, with exptra protection agains KNOCK flood attacks
+	bot.write(['MODE', trigger.sender, "+mKi"])
+
+	# Now read in a list of the cool kids, and give them all voice
+	conn = engine.connect()
+	query = "SELECT nick FROM coolkids"
+	items = conn.execute(query)
+	for entry in items:
+		# Results are returned as a tuple with an empty second element
+		nick = entry[0]
+		if nick in bot.privileges[trigger.sender]:
+			bot.write(['MODE', trigger.sender, "+v", nick])
+
+
+@module.commands('unhush_channel')
+@module.require_admin
+@module.priority('high')
+@module.unblockable
+def unHushChannel(bot, trigger):
+	'''Sets the channel -m, and removes +v from everyone on a predefined list. Used for bot parties'''
+
+	bot.msg(trigger.sender, trigger.nick + ", setting " + trigger.sender + " -m and taking +v from all the cool kids")
+
+	# Read in a list of the cool kids, and take voice from them
+	conn = engine.connect()
+	query = "SELECT nick FROM coolkids"
+	items = conn.execute(query)
+	for entry in items:
+		# Results are returned as a tuple with an empty second element
+		nick = entry[0]
+		if nick in bot.privileges[trigger.sender]:
+			bot.write(['MODE', trigger.sender, "-v", nick])
+
+
+	# Set the channel -m and remove no-KNOCK and invite
+	bot.write(['MODE', trigger.sender, "-mKi"])

@@ -132,19 +132,20 @@ def calculateChannelActivity(bot):
 def show_channel_activity(bot, trigger):
 	'''Prints the current channel activity level to the channel it's called in'''
 
-	arg = trigger.group(2)
+	arg = None
+	if trigger.group(2): arg = str(trigger.group(2).lstrip('#'))
 	channel = str(trigger.sender.lstrip('#'))
 	numTimers = 0
 
 	defaultTimer[channel].calculateChannelActivity(bot, trigger.sender)
-	if not arg:
-		bot.msg(trigger.sender, trigger.nick + ", current channel activity level is " + str(defaultTimer[channel].channelActivity) 
-		        + ", but the better metric is " + str(defaultTimer[channel].channelActivitySum))
-	else:
+	
+	if arg:
 		print "Showing stats for " + arg
 		bot.msg(trigger.sender, trigger.nick + ", current channel activity level is " + str(defaultTimer[arg].channelActivity) 
-		        + " and sum of exp,log is " + str(defaultTimer[arg].channelActivitySum) + " (" + str(defaultTimer[arg].channelActivityExp) + "+" + str(defaultTimer[arg].channelActivityLog) + ")" 
-			+ " based on " + str(defaultTimer[arg].channelActivityCounterExp) + "," + str(defaultTimer[arg].channelActivityCounterLog))
+		        + ", but the better metric is " + str(defaultTimer[arg].channelActivitySum))
+	else:
+		bot.msg(trigger.sender, trigger.nick + ", current channel activity level is " + str(defaultTimer[channel].channelActivity) 
+		        + ", but the better metric is " + str(defaultTimer[channel].channelActivitySum))
 
 
 	for timer in defaultTimer[channel].timers:

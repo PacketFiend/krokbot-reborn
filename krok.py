@@ -144,7 +144,8 @@ def talk_shit(bot, trigger):
 	#bot.say(response)
 	conn = engine.connect()
 	name = trigger.nick
-	items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
+	query = "SELECT id, quote FROM bestkrok WHERE quote LIKE '%%"+str(name)+"%%';"
+	items = conn.execute(query)
 
 	cnt = 0 
 	for i in items:
@@ -155,7 +156,7 @@ def talk_shit(bot, trigger):
 	else:
 		quote = randint(0,cnt)
 
-		items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
+		items = conn.execute(query)
 
 		cnt = 0
 		clean_quote = ''
@@ -178,15 +179,16 @@ def talk_shit(bot, trigger):
 @module.rate(20) # we may need to adjust this, but we dont need people spamming the command
 @module.commands('deeplove')
 def deeplove(bot, trigger):
+    from pprint import pprint
     """ usage: !deeplove <nick> """
     clean_quote = ''
     ret_quote = ''
     conn = engine.connect()
-    nickarg = str(trigger.args[1].split())
-    print nickarg
+    name = trigger.group(2)
     try:
-        name = nickarg[1]
-        items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
+	print name
+        query = "SELECT id, quote FROM bestkrok WHERE quote LIKE '%%"+str(name)+"%%';"
+	items = conn.execute(query)
 
         cnt = 0
         for i in items:
@@ -196,7 +198,8 @@ def deeplove(bot, trigger):
         else:
             quote = randint(0,cnt)
 
-            items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote LIKE '%"+str(name)+"%';")
+            query = "SELECT id, quote FROM bestkrok WHERE quote LIKE '%%"+str(name)+"%%';"
+            items = conn.execute(query)
 
             cnt = 0
             clean_quote = ''
@@ -252,6 +255,7 @@ def random_yo(bot):
 # for each channel that we're in, pick a random nick out of privileges dict,
 # remove krok{b,p}ot and other blocked nicks
     channel_list = []
+    nicks = []
     conn_channels = bot.privileges
     for channel in conn_channels:
         if channel not in channel_list:
@@ -261,11 +265,11 @@ def random_yo(bot):
         if random.random() < 0.3:
             channel.encode('utf-8')
             names = bot.privileges[channel]
-            blocked_nicks = ('krokbot', 'krokpot')
-            for bnick in blocked_nicks:
-                if bnick in names.keys():
-                    del names[bnick]
-            rand_nick = random.choice(list(names.keys()))
+            blocked_nicks = ('krokbot', 'krokpot', 'krokwhore')
+            for nick in names.keys():
+                if nick not in blocked_nicks:
+                        nicks.append(nick)
+            rand_nick = random.choice(list(nicks))
 
             rand_krok = random_krok() 
             rand_yo = "yo " + rand_nick 
@@ -279,13 +283,14 @@ def random_yo(bot):
 @module.commands('yo')
 def random_yo_callable(bot, trigger):
     """ usage: !yo  """
+    nicks = []
     channel = trigger.sender
     names = bot.privileges[channel]
-    blocked_nicks = ('krokbot', 'krokpot')
-    for bnick in blocked_nicks:
-        if bnick in names.keys():
-            del names[bnick]
-    rand_nick = random.choice(list(names.keys()))
+    blocked_nicks = ('krokbot', 'krokpot', 'krokwhore')
+    for nick in names.keys():
+        if nick not in blocked_nicks:
+            nicks.append(nick)
+    rand_nick = random.choice(list(nicks))
 
     rand_krok = random_krok() 
     rand_yo = "yo " + rand_nick 
