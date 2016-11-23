@@ -184,7 +184,11 @@ def deeplove(bot, trigger):
     clean_quote = ''
     ret_quote = ''
     conn = engine.connect()
-    name = trigger.group(2)
+    if trigger.group(2):
+        name = trigger.group(2)
+    else:
+	bot.action("makes sweet android love to itself.", trigger.sender)
+	return
     try:
 	print name
         query = "SELECT id, quote FROM bestkrok WHERE quote LIKE '%%"+str(name)+"%%';"
