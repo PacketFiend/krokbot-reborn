@@ -48,7 +48,7 @@ def show_users(bot, trigger):
 @module.event('KICK')
 @module.event('QUIT')
 @module.event('KILL')
-@module.priority('high')
+@module.priority('low')
 @module.unblockable
 @module.rule('.*')
 def userJoin(bot, trigger):
