@@ -21,10 +21,10 @@ def setup(bot):
 Allow bot admins to gain channel OPs mode.
 '''
 #@module.require_privmsg
-@module.require_admin
+#@module.require_admin
 @module.commands('opme')
 @module.priority('low')
-#@module.rate('300')
+@module.rate('300')
 def opme(bot, trigger):
     nickname = trigger.nick
     channel = trigger.sender
@@ -34,25 +34,26 @@ def opme(bot, trigger):
             mode = "+o"
             bot.write(['MODE ', channel, mode, nickname])
             bot.memory['opers'][nickname] = 1
-            print(bot.memory['opers'])
+            print("Current Opers:", bot.memory['opers'])
         elif bot.memory['opers'].get(nickname, None) == 1:
             mode = "-o"
             bot.write(['MODE ', channel, mode, nickname])
             del bot.memory['opers'][nickname]
-            print(bot.memory['opers'])
+            print("Current Opers:", bot.memory['opers'])
     else:
         bot.reply("No ops for you chamo, your mama don't love you")
 
 '''
 Functionality for bot admins to admin other users regardless of the fact whether
-they have channel OPs or not. Bot admins technically have elevated privileges anyway.
+they have channel OPs or not.
 
-Note = this could prove to be dangerous thus requires a bit more testing.
+NOTE: this could prove to be dangerous thus requires a bit more testing. This is
+equivalent to having global server ops.
 '''
-@module.require_admin
+#@module.require_admin
 @module.commands('op')
 @module.priority('low')
-#@module.rate('300')
+@module.rate('300')
 def op_user(bot, trigger):
     if trigger.admin:
         nickname = trigger.group(2)
@@ -62,11 +63,11 @@ def op_user(bot, trigger):
             mode = "+o"
             bot.write(['MODE ', channel, mode, nickname])
             bot.memory['opers'][nickname] = 1
-            print(bot.memory['opers'])
+            print("Current Opers:", bot.memory['opers'])
         elif bot.memory['opers'].get(nickname, None) == 1:
             mode = "-o"
             bot.write(['MODE ', channel, mode, nickname])
             del bot.memory['opers'][nickname]
-            print(bot.memory['opers'])
+            print("Current Opers:", bot.memory['opers'])
     else:
         bot.reply("No ops for that chamo, go chop bongs")
