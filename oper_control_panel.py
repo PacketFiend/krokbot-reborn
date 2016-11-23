@@ -17,6 +17,9 @@ Define some memory dicts/lists for keeping track of users who become OPs.
 def setup(bot):
     bot.memory['opers'] = {}
 
+'''
+Allow bot admins to gain channel OPs mode.
+'''
 #@module.require_privmsg
 @module.require_admin
 @module.commands('opme')
@@ -40,6 +43,12 @@ def opme(bot, trigger):
     else:
         bot.reply("No ops for you chamo, your mama don't love you")
 
+'''
+Functionality for bot admins to admin other users regardless of the fact whether
+they have channel OPs or not. Bot admins technically have elevated privileges anyway.
+
+Note = this could prove to be dangerous thus requires a bit more testing.
+'''
 @module.require_admin
 @module.commands('op')
 @module.priority('low')
