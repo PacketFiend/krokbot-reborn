@@ -27,13 +27,12 @@ from sqlalchemy.sql import (select, exists)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-#engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
-engine = create_engine("mysql+pymysql://ken:hHq4C*CP3yx&tBe$CQbRj<k-2g{-vm!/@asgard.pure-defect.com:3306/krokbot")
+engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
 
-#api = twitter.Api(consumer_key=creds.tw_consumer_key,
-#	consumer_secret=creds.tw_consumer_secret,
-#	access_token_key=creds.tw_access_token_key,
-#	access_token_secret=creds.tw_access_token_secret)
+api = twitter.Api(consumer_key=creds.tw_consumer_key,
+	consumer_secret=creds.tw_consumer_secret,
+	access_token_key=creds.tw_access_token_key,
+	access_token_secret=creds.tw_access_token_secret)
 
 geolocator = Nominatim()
 
