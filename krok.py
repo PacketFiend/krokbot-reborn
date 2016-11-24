@@ -8,6 +8,7 @@
 
 from sopel import module, tools
 import sqlite3
+import pymysql
 import random
 import time
 from random import randint
