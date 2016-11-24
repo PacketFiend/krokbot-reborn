@@ -253,7 +253,8 @@ def random_yo(bot):
 # for each channel that we're in, pick a random nick out of privileges dict,
 # remove krok{b,p}ot and other blocked nicks
     conn_channels = bot.privileges
-    channel_list = [channel for channel in conn_channels if channel not in channel_list]
+    channel_list = [channel for channel in conn_channels]
+    channel_list = sorted(set(channel_list))
     for channel in channel_list:
         #print channel
         if random.random() < 0.3:
@@ -275,7 +276,6 @@ def random_yo(bot):
 @module.commands('yo')
 def random_yo_callable(bot, trigger):
     """ usage: !yo  """
-    nicks = []
     channel = trigger.sender
     names = bot.privileges[channel]
     blocked_nicks = ('krokbot', 'krokpot', 'krokwhore')
