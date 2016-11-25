@@ -9,7 +9,7 @@
 
 from __future__ import print_function
 from sopel import module, tools
-import sqlite3
+#import sqlite3
 import random
 import time
 from random import randint
@@ -39,6 +39,11 @@ class Baits(Base):
     name = Column(String, primary_key=True, autoincrement=False)
     count = Column(Integer)
 
+class Words(Base):
+    __tablename__ = 'words'
+    name = Column(String, primary_key=True, autoincrement=False)
+    count = Column(Integer)
+
 def start_db():
     engine = create_engine('sqlite:///' + config.stats_db, connect_args={'check_same_thread': False})
     Session = sessionmaker()
@@ -47,6 +52,12 @@ def start_db():
     Base.metadata.reflect(engine)
 
     return session
+
+'''
+Define some memory dicts/lists for keeping track of users and their word counts.
+'''
+def setup(bot):
+    bot.memory['word_counts'] = {}
 
 '''
 Insert top lather stats; Start by matching on ACTION lathers; if match found
@@ -121,3 +132,65 @@ def get_top_stats(bot, trigger):
 
     stats = {k.encode('ascii'): v for k, v in top_stats.items()}
     bot.reply(reply + ": " + str(stats))
+
+'''
+!words command that tracks channel's top talkers with word counts for a given timespan.
+
+database schema:
+nickname, count
+
+For every line from each user, count the words and put them in bot.memory dict.
+
+We need to setup bot.memory for each user in the channel. On JOIN event for each user,
+set up their bot.memory as well.
+
+'''
+@module.rule(r'.*')
+def words_stats(bot, trigger):
+    nickname = trigger.nick
+    if nickname not in bot.memory['word_counts'] or bot.memory['word_counts'].get(nickname, None) == 0:
+        bot.memory['word_counts'][nickname] = 0
+
+    channel = trigger.args[0]
+    line = trigger.args[1:]
+    for word in str(line).split(" "):
+        bot.memory['word_counts'][nickname] += 1
+    print(bot.memory['word_counts'])
+
+'''
+Dump bot.memory['word_counts'] into a database table
+'''
+@module.interval(900)
+def dump_word_stats(bot):
+    session = start_db()
+    table = Words
+
+    for nickname in bot.memory['word_counts'].keys():
+        word_count = bot.memory['word_counts'][nickname]
+        rs = session.query(exists().where(table.name == nickname)).scalar()
+
+        if rs is True:
+            try:
+                session.query(table).filter_by(name=nickname).update({'count': table.count + word_count})
+                session.commit()
+            except NameError:
+                print("{} not found in the table.".format(nickname))
+            except:
+                print("Could not increment user's {} count in the table.".format(table))
+            finally:
+            session.close()
+        elif rs is False:
+            print("Adding new nickname to the {} stats table : {}".format(table, nickname))
+            try:
+                rs = table(name=nickname, count=word_count)
+                session.add(rs)
+                session.commit()
+            except:
+                table = 'words'
+                print("Failed adding {} to the {} stats table".format(nickname, table))
+            finally:
+                print("What you talkin' about chamo?")
+                session.close()
+
+        # Clear the memory before starting again
+        bot.memory['word_counts'][nickname] = 0
