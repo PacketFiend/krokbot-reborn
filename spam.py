@@ -26,11 +26,16 @@ def spam(bot, trigger):
 	nick = nick[0]
 
 	for channel in bot.users: 
-		if nick in channel:
+		if nick in channel and nick not in usersToSpam:
 			usersToSpam.append(nick)
 			break
 		else:
-			print pass
+			if nick not in channel:
+				bot.msg(trigger.sender, trigger.nick + ", I have no knowledge of anybody named " + nick)
+				break
+			if nick in usersToSpam:
+				bot.msg(trigger.sender, trigger.nick + ", I'm already spamming " + nick + ". You're a fucking fucktard, fucker. Fuck the fuck off. FUCK!")
+				break
 
 @module.require_admin
 @module.commands('unspam')
@@ -44,7 +49,8 @@ def unSpam(bot, trigger):
 
 	if nick in usersToSpam:
 		usersToSpam.remove(nick)
-		print "Not spamming " + nick + " anymore :("
+	else:
+		bot.msg(trigger.sender, trigger.nick + ", you're such a fucktard. I wasn't spamming that dude yet.")
 
 @module.event('JOIN')
 @module.event('PART')
