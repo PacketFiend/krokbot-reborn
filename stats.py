@@ -114,7 +114,7 @@ command specified in the line from the server). Based on that, we decide which
 database table we'll be querying.
 '''
 @module.rate(20)
-@module.commands('toplather', 'toplure', 'topbait')
+@module.commands('toplather', 'toplure', 'topbait', 'words')
 def get_top_stats(bot, trigger):
     if 'lather' in trigger.group(1):
         reply = "Top Lather Action"
@@ -125,6 +125,9 @@ def get_top_stats(bot, trigger):
     elif 'bait' in trigger.group(1):
         reply = "Fine Baiting"
         table = Baits
+    elif 'words' in trigger.group(1):
+        reply = "Top Blabbermouths"
+        table = Words
 
     session = start_db()
     top_stats = {nickname.name: nickname.count for nickname in session.query(table)}
