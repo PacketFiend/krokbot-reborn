@@ -139,14 +139,21 @@ def get_top_stats(bot, trigger):
 '''
 !words command that tracks channel's top talkers with word counts for a given timespan.
 
-database schema:
+This command is setup in get_top_stats() but requires word_stats() to build a dictionary
+with word counts for every user in the channel. Currently, this tracks all channels for each user.
+In the future we probably should track word counts for each user per individual channel.
+
+Algorithm description:
+We need to setup bot.memory for each user in the channel. If the user is not in bot.memory['word_counts']
+dictionary, set up a new key for them with value == '0'.
+
+On each line that the bot sees from each user, count the words and put them in bot.memory 
+dict for that user. For more lines, update the value for the username key with newer word count. 
+Periodically dump the bot.memory['word_counts'] dict into a database table and set the 
+value for the username key to 0.
+
+Current database schema:
 nickname, count
-
-For every line from each user, count the words and put them in bot.memory dict.
-
-We need to setup bot.memory for each user in the channel. On JOIN event for each user,
-set up their bot.memory as well.
-
 '''
 @module.rule(r'.*')
 def words_stats(bot, trigger):
