@@ -153,8 +153,12 @@ def words_stats(bot, trigger):
 
     channel = trigger.args[0]
     line = trigger.args[1:]
-    for word in str(line).split(" "):
-        bot.memory['word_counts'][nickname] += 1
+    # instead of using a forloop, count the "line" list elements and 
+    # add that number to the bot.memory['word_counts'] dict.
+    #for word in str(line).split(" "):
+    #    bot.memory['word_counts'][nickname] += 1
+    word_count = len(str(line).split(" "))
+    bot.memory['word_counts'][nickname] += word_count
     print(bot.memory['word_counts'])
 
 '''
