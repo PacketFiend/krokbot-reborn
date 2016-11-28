@@ -8,6 +8,7 @@
 
 from sopel import module, tools
 import sqlite3
+import pymysql
 import random
 import time
 from random import randint
@@ -261,9 +262,8 @@ def random_yo(bot):
     channel_list = []
     nicks = []
     conn_channels = bot.privileges
-    for channel in conn_channels:
-        if channel not in channel_list:
-            channel_list.append(channel)
+    channel_list = [channel for channel in conn_channels]
+    channel_list = sorted(set(channel_list))
     for channel in channel_list:
         #print channel
         if random.random() < 0.3:
@@ -287,13 +287,10 @@ def random_yo(bot):
 @module.commands('yo')
 def random_yo_callable(bot, trigger):
     """ usage: !yo  """
-    nicks = []
     channel = trigger.sender
     names = bot.privileges[channel]
     blocked_nicks = ('krokbot', 'krokpot', 'krokwhore')
-    for nick in names.keys():
-        if nick not in blocked_nicks:
-            nicks.append(nick)
+    nicks = [nick for nick in names.keys() if nick not in blocked_nicks]
     rand_nick = random.choice(list(nicks))
 
     rand_krok = random_krok() 
