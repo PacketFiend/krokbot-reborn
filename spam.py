@@ -31,8 +31,7 @@ def spam(bot, trigger):
 			break
 		else:
 			if nick not in channel:
-				bot.msg(trigger.sender, trigger.nick + ", I have no knowledge of anybody named " + nick)
-				break
+				continue
 			if nick in usersToSpam:
 				bot.msg(trigger.sender, trigger.nick + ", I'm already spamming " + nick + ". You're a fucking fucktard, fucker. Fuck the fuck off. FUCK!")
 				break
