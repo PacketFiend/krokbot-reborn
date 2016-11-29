@@ -147,9 +147,9 @@ Algorithm description:
 We need to setup bot.memory for each user in the channel. If the user is not in bot.memory['word_counts']
 dictionary, set up a new key for them with value == '0'.
 
-On each line that the bot sees from each user, count the words and put them in bot.memory 
-dict for that user. For more lines, update the value for the username key with newer word count. 
-Periodically dump the bot.memory['word_counts'] dict into a database table and set the 
+On each line that the bot sees from each user, count the words and put them in bot.memory
+dict for that user. For more lines, update the value for the username key with newer word count.
+Periodically dump the bot.memory['word_counts'] dict into a database table and set the
 value for the username key to 0.
 
 Current database schema:
@@ -163,7 +163,7 @@ def words_stats(bot, trigger):
 
     channel = trigger.args[0]
     line = trigger.args[1:]
-    # instead of using a forloop, count the "line" list elements and 
+    # instead of using a forloop, count the "line" list elements and
     # add that number to the bot.memory['word_counts'] dict.
     #for word in str(line).split(" "):
     #    bot.memory['word_counts'][nickname] += 1
@@ -192,7 +192,7 @@ def dump_word_stats(bot):
             except:
                 print("Could not increment user's {} count in the table.".format(table))
             finally:
-            session.close()
+                session.close()
         elif rs is False:
             print("Adding new nickname to the {} stats table : {}".format(table, nickname))
             try:
