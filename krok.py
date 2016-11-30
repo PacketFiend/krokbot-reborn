@@ -113,7 +113,6 @@ def shootout(bot, trigger):
         limit = int(shard[0])
 	conn = engine.connect()
 	q = select([bestkrok.c.quote]).order_by('RAND()').limit(limit)
-	print q
 	items = conn.execute(q)
 	for i in items:
 		bot.say(i[0])
@@ -188,7 +187,6 @@ def talk_shit(bot, trigger):
 @module.rate(20) # we may need to adjust this, but we dont need people spamming the command
 @module.commands('deeplove')
 def deeplove(bot, trigger):
-    from pprint import pprint
     """ usage: !deeplove <nick> """
     clean_quote = ''
     ret_quote = ''
@@ -199,21 +197,18 @@ def deeplove(bot, trigger):
 	bot.action("makes sweet android love to itself.", trigger.sender)
 	return
     try:
-	print name
         query = select([bestkrok.c.id, bestkrok.c.quote]).where(bestkrok.c.quote.like('%'+name+'%'))
 	items = conn.execute(query)
 
         cnt = 0
         for i in items:
             cnt += 1
-	    print i[1]
         if cnt == 0:
             ret_quote = "that looks like an asshole I've never seen before"
         else:
             quote = randint(0,cnt)
 
 	    query = select([bestkrok.c.id, bestkrok.c.quote]).where(bestkrok.c.quote.like('%'+name+'%'))
-	    print query
             items = conn.execute(query)
 
             cnt = 0
