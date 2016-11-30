@@ -152,7 +152,7 @@ def talk_shit(bot, trigger):
 	#bot.say(response)
 	conn = engine.connect()
 	name = str(trigger.nick)
-	query = select([bestkrok.c.id, bestkrok.c.quote]).where(bestkrok.c.quote.like('name%'))
+	query = select([bestkrok.c.id, bestkrok.c.quote]).where(bestkrok.c.quote.like('%'+name+'%'))
 	items = conn.execute(query)
 
 	cnt = 0 
