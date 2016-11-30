@@ -23,10 +23,15 @@ import kgen
 import creds
 import feedparser
 
-from sqlalchemy import (create_engine, Table, Column, Integer, String, MetaData, ForeignKey, exc)
+from sqlalchemy import (create_engine, Table, Column, Text, Integer, String, MetaData, ForeignKey, exc)
 from sqlalchemy.sql import (select, exists)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+metadata = MetaData()
+bestkrok = Table('bestkrok', metadata,
+	Column('id', Integer, primary_key=True, autoincrement=True),
+	Column('quote', Text)
+)
 
 engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
 
@@ -107,7 +112,7 @@ def shootout(bot, trigger):
     else:
         limit = int(shard[0])
 	conn = engine.connect()
-	q = "SELECT quote FROM bestkrok WHERE quote != '' ORDER BY RAND() LIMIT %s" % str(limit)
+	q = select([bestkrok.c.quote]).order_by('RAND()').limit(limit)
 	items = conn.execute(q)
 	for i in items:
 		bot.say(i[0])
@@ -117,14 +122,16 @@ def shootout(bot, trigger):
 def krokquote(bot, trigger):
     """ usage: !krokquote """
     conn = engine.connect()
-    items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
+    q = select([bestkrok.c.id, bestkrok.c.quote]).where(bestkrok.c.quote != '')
+    items = conn.execute(q)
     i = 0
     for row in items:
         i += 1
 	
     rnd = randint(0,i)
     x = 0
-    items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
+    q = select([bestkrok.c.id, bestkrok.c.quote]).where(bestkrok.c.quote != '')
+    items = conn.execute(q)
     for q in items:
         if q[0] == rnd:
             quote = str(q[1])
@@ -144,8 +151,8 @@ def talk_shit(bot, trigger):
 	#response = "Hey "+trigger.nick+", go fuck yourself!"
 	#bot.say(response)
 	conn = engine.connect()
-	name = trigger.nick
-	query = "SELECT id, quote FROM bestkrok WHERE quote LIKE '%%"+str(name)+"%%';"
+	name = str(trigger.nick)
+	query = select([bestkrok.c.id, bestkrok.c.quote]).where(bestkrok.c.quote.like('%'+name+'%'))
 	items = conn.execute(query)
 
 	cnt = 0 
@@ -180,19 +187,17 @@ def talk_shit(bot, trigger):
 @module.rate(20) # we may need to adjust this, but we dont need people spamming the command
 @module.commands('deeplove')
 def deeplove(bot, trigger):
-    from pprint import pprint
     """ usage: !deeplove <nick> """
     clean_quote = ''
     ret_quote = ''
     conn = engine.connect()
     if trigger.group(2):
-        name = trigger.group(2)
+        name = str(trigger.group(2))
     else:
 	bot.action("makes sweet android love to itself.", trigger.sender)
 	return
     try:
-	print name
-        query = "SELECT id, quote FROM bestkrok WHERE quote LIKE '%%"+str(name)+"%%';"
+        query = select([bestkrok.c.id, bestkrok.c.quote]).where(bestkrok.c.quote.like('%'+name+'%'))
 	items = conn.execute(query)
 
         cnt = 0
@@ -203,14 +208,14 @@ def deeplove(bot, trigger):
         else:
             quote = randint(0,cnt)
 
-            query = "SELECT id, quote FROM bestkrok WHERE quote LIKE '%%"+str(name)+"%%';"
+	    query = select([bestkrok.c.id, bestkrok.c.quote]).where(bestkrok.c.quote.like('%'+name+'%'))
             items = conn.execute(query)
 
             cnt = 0
             clean_quote = ''
             for q in items:
                 if cnt == quote:
-		            clean_quote = q[1].replace("\\'","'")	
+		            clean_quote = q[1].replace("\\'","'")
                 else:
                     pass
                 cnt += 1
@@ -237,14 +242,15 @@ def deeplove(bot, trigger):
 # grab a random quote
 def random_krok():
     conn = engine.connect()
-    items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
+    q = select([bestkrok.c.id, bestkrok.c.quote]).where(bestkrok.c.quote != '')
+    items = conn.execute(q)
     i = 0
     for row in items:
         i += 1
 
     rnd = randint(0,i)
     x = 0
-    items = conn.execute("SELECT id, quote FROM bestkrok WHERE quote != '';")
+    items = conn.execute(q)
     for q in items:
         if x == rnd:
             rand_quote = str(q[1])
