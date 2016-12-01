@@ -192,7 +192,7 @@ def dump_word_stats(bot):
             except:
                 print("Could not increment user's {} count in the table.".format(table))
             finally:
-            session.close()
+                session.close()
         elif rs is False:
             print("Adding new nickname to the {} stats table : {}".format(table, nickname))
             try:
