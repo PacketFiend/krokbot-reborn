@@ -6,6 +6,8 @@
 #	   used as an anti-DDoS measure.
 #
 
+# THIS IS A USELESS PUSH
+
 from sopel import module, tools, bot
 from sopel.tools.target import User, Channel
 from random import randint
