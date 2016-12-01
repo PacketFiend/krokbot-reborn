@@ -6,9 +6,6 @@
 #	   used as an anti-DDoS measure.
 #
 
-# THIS IS A USELESS PUSH
-# THIS IS ALSO A USELESS PUSH
-
 from sopel import module, tools, bot
 from sopel.tools.target import User, Channel
 from random import randint
@@ -25,7 +22,8 @@ maxUsers = 100
 
 import sqlalchemy
 
-engine = sqlalchemy.create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+#engine = sqlalchemy.create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+engine = sqlalchemy.create_engine("mysql+pymysql://ken:bwK9VnGxtCdd@asgard.pure-defect.com:3306/krokbot")
 
 @module.require_admin
 @module.commands('channel_limit')
@@ -172,7 +170,7 @@ def hushChannel(bot, trigger):
 
 	# Now read in a list of the cool kids, and give them all voice
 	conn = engine.connect()
-	query = "SELECT nick FROM coolkids"
+	query = "SELECT nick FROM coolkids WHERE trusted = 1"
 	items = conn.execute(query)
 	for entry in items:
 		# Results are returned as a tuple with an empty second element
@@ -192,7 +190,7 @@ def unHushChannel(bot, trigger):
 
 	# Read in a list of the cool kids, and take voice from them
 	conn = engine.connect()
-	query = "SELECT nick FROM coolkids"
+	query = "SELECT nick FROM coolkids WHERE trusted = 1"
 	items = conn.execute(query)
 	for entry in items:
 		# Results are returned as a tuple with an empty second element
