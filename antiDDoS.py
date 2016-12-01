@@ -7,6 +7,7 @@
 #
 
 # THIS IS A USELESS PUSH
+# THIS IS ALSO A USELESS PUSH
 
 from sopel import module, tools, bot
 from sopel.tools.target import User, Channel
