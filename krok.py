@@ -28,12 +28,10 @@ from sqlalchemy.sql import (select, exists)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 metadata = MetaData()
-bestkrok = Table('bestkrok', metadata,
-	Column('id', Integer, primary_key=True, autoincrement=True),
-	Column('quote', Text)
-)
 
 engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+
+bestkrok = Table('bestkrok', metadata, autoload=True, autoload_with=engine)
 
 api = twitter.Api(consumer_key=creds.tw_consumer_key,
 	consumer_secret=creds.tw_consumer_secret,
