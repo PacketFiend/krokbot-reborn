@@ -31,7 +31,6 @@ metadata = MetaData()
 
 loggedInUsers = []
 
-#engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
 engine = create_engine(config.sql_connection_string)
 
 coolkids = Table('coolkids', metadata, autoload=True, autoload_with=engine)
@@ -57,7 +56,7 @@ def postStatusUpdate(bot, trigger):
 		status = api.PostUpdate(message)
 		bot.msg(trigger.sender, trigger.nick + ", you just tweeted: " + " " + status.text)
 	else:
-		if nick not it loggedInUsers:
+		if nick not in loggedInUsers:
 			bot.msg(trigger.sender, "Don't be a fucking tool. I don't let just anybody tweet. Register with Nickserv.")
 		elif not canTweet:
 			bot.msg(trigger.sender, "Hey there pipo, I just don't like you enough. Get one of my admins to vouch for you.")
