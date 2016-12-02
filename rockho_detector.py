@@ -6,7 +6,8 @@
 # Summary: krokbot rockho detector
 #
 
-from __future__ import print_function
+import config
+from config import sql_connection_string
 from sopel import module, tools, config
 from sopel.tools.target import User, Channel
 from sopel.tools import Identifier, iteritems, events
@@ -20,12 +21,7 @@ import sys
 import requests
 import sqlalchemy
 
-engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
-
-api = twitter.Api(consumer_key=creds.tw_consumer_key,
-       consumer_secret=creds.tw_consumer_secret,
-       access_token_key=creds.tw_access_token_key,
-       access_token_secret=creds.tw_access_token_secret)
+engine = sqlalchemy.create_engine(sql_connection_string)
 
 '''
 Define some memory dicts/lists for keeping track of users.
@@ -35,6 +31,7 @@ def setup(bot):
     global tor_exit_nodes
     tor_exit_nodes = []
 
+@module.unblockable
 @module.event('JOIN')
 @module.rule('.*')
 def check_for_rockhos(bot, trigger):
@@ -66,7 +63,7 @@ def check_for_rockhos(bot, trigger):
 Get TOR Exit nodes list and parse the IPs into a python list.
 '''
 @module.commands('get_tor')
-#@module.interval(3600)
+@module.interval(3600)
 def get_tor_exit_nodes(bot, trigger=None):
     num = 0
     r = requests.get('https://check.torproject.org/exit-addresses')
@@ -75,4 +72,4 @@ def get_tor_exit_nodes(bot, trigger=None):
     #for block in text:
     #    if "ExitAddress" in block: tor_exit_nodes.append(block.split()[1])
     tor_exit_nodes = [block.split()[1] for block in text.split('\n') if "ExitAddress" in block]
-    print("Retrieved " + len(tor_exit_nodes) + " TOR nodes.")
+    print "Retrieved " + len(tor_exit_nodes) + " TOR nodes."
