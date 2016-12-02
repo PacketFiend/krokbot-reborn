@@ -55,8 +55,6 @@ def check_for_rockhos(bot, trigger):
 				
     if trigger.admin:
         bot.say("A glorious leader has joined!")
-    if trigger.nick == 'rockho' or "ct.charter.com" in trigger.hostmask:
-        bot.say("A wild rockho appeared! Prepare the defenses!")
 
 
 '''
