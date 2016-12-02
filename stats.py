@@ -18,6 +18,7 @@ from sqlalchemy.sql import (select, exists)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import config
+import re
 
 '''
 Setup database ORM stuff. Database location is fed in via config module.
@@ -41,8 +42,9 @@ class Baits(Base):
 
 class Words(Base):
     __tablename__ = 'words'
-    name = Column(String, primary_key=True, autoincrement=False)
+    channel = Column(String, primary_key=True, autoincrement=False)
     count = Column(Integer)
+    name = Column(String)
 
 def start_db():
     engine = create_engine('sqlite:///' + config.stats_db, connect_args={'check_same_thread': False})
@@ -57,7 +59,11 @@ def start_db():
 Define some memory dicts/lists for keeping track of users and their word counts.
 '''
 def setup(bot):
-    bot.memory['word_counts'] = {}
+    for channel in bot.privileges:
+        channel = channel.encode('ascii')
+        bot.memory['word_counts'] = {}
+        bot.memory['word_counts'][channel] = {}
+        print(bot.memory['word_counts'][channel])
 
 '''
 Insert top lather stats; Start by matching on ACTION lathers; if match found
@@ -157,19 +163,30 @@ nickname, count
 '''
 @module.rule(r'.*')
 def words_stats(bot, trigger):
-    nickname = trigger.nick
-    if nickname not in bot.memory['word_counts'] or bot.memory['word_counts'].get(nickname, None) == 0:
-        bot.memory['word_counts'][nickname] = 0
-
+    nickname = trigger.user
+    nickname = nickname.encode('ascii')
     channel = trigger.args[0]
+    channel = channel.encode('ascii')
     line = trigger.args[1:]
+    line =  map(str, line)
+    #line = line.encode('ascii')
+
+    if re.match(r'\#', trigger.sender):
+        if nickname not in bot.memory['word_counts'][channel]: # or bot.memory['word_counts'][channel].get(nickname, None) == 0:
+            bot.memory['word_counts'][channel][nickname] = 0
+        else:
+            print(line)
+            word_count = len(str(line).split(" "))
+            print(word_count)
+            bot.memory['word_counts'][channel][nickname] += word_count
+            print(bot.memory['word_counts'])
+    else:
+        print("Private message it seems...")
+
     # instead of using a forloop, count the "line" list elements and
     # add that number to the bot.memory['word_counts'] dict.
     #for word in str(line).split(" "):
     #    bot.memory['word_counts'][nickname] += 1
-    word_count = len(str(line).split(" "))
-    bot.memory['word_counts'][nickname] += word_count
-    print(bot.memory['word_counts'])
 
 '''
 Dump bot.memory['word_counts'] into a database table
@@ -179,32 +196,33 @@ def dump_word_stats(bot):
     session = start_db()
     table = Words
 
-    for nickname in bot.memory['word_counts'].keys():
-        word_count = bot.memory['word_counts'][nickname]
-        rs = session.query(exists().where(table.name == nickname)).scalar()
+    for channel in bot.memory['word_counts'].items():
+        for nickname, word_count in bot.memory['word_counts'][channel].items():
+        #word_count = bot.memory['word_counts'][channel][nickname]
+            rs = session.query(exists().where(table.name == nickname)).scalar()
 
-        if rs is True:
-            try:
-                session.query(table).filter_by(name=nickname).update({'count': table.count + word_count})
-                session.commit()
-            except NameError:
-                print("{} not found in the table.".format(nickname))
-            except:
-                print("Could not increment user's {} count in the table.".format(table))
-            finally:
-                session.close()
-        elif rs is False:
-            print("Adding new nickname to the {} stats table : {}".format(table, nickname))
-            try:
-                rs = table(name=nickname, count=word_count)
-                session.add(rs)
-                session.commit()
-            except:
-                table = 'words'
-                print("Failed adding {} to the {} stats table".format(nickname, table))
-            finally:
-                print("What you talkin' about chamo?")
-                session.close()
+            if rs is True:
+                try:
+                    session.query(table).filter_by(channel=channel).filter_by(name=nickname).update({'count': table.count + word_count})
+                    session.commit()
+                except NameError:
+                    print("{} not found in the table.".format(nickname))
+                except:
+                    print("Could not increment user's {} count in the table.".format(table))
+                finally:
+                    session.close()
+            elif rs is False:
+                print("Adding new nickname to the {} stats table : {}".format(table, nickname))
+                try:
+                    rs = table(name=nickname, count=word_count, channel=channel)
+                    session.add(rs)
+                    session.commit()
+                except:
+                    table = 'words'
+                    print("Failed adding {} to the {} stats table".format(nickname, table))
+                finally:
+                    print("What you talkin' about chamo?")
+                    session.close()
 
-        # Clear the memory before starting again
-        bot.memory['word_counts'][nickname] = 0
+            # Clear the memory before starting again
+            bot.memory['word_counts'][channel][nickname] = 0
