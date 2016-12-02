@@ -47,8 +47,10 @@ def postStatusUpdate(bot, trigger):
 	q = select([coolkids.c.cantweet]).where(coolkids.c.nick == nick)
 	items = conn.execute(q)
 	row = items.fetchone()
-	canTweet = row[0]
-
+	if row[0]:
+		canTweet = row[0]
+	else:
+		canTweet = 0
 	bot.write(['WHOIS ', trigger.nick])
 	time.sleep(1)	# Wait for the server response
 	# If the nick is logged in, it should be in loggedInUsers now...
