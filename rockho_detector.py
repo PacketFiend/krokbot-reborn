@@ -20,12 +20,13 @@ import sys
 import requests
 import sqlalchemy
 
-engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+#engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+engine = sqlalchemy.create_engine("mysql+pymysql://ken:hHq4C*CP3yx&tBe$CQbRj<k-2g{-vm!/@asgard.pure-defect.com:3306/krokbot")
 
-api = twitter.Api(consumer_key=creds.tw_consumer_key,
-       consumer_secret=creds.tw_consumer_secret,
-       access_token_key=creds.tw_access_token_key,
-       access_token_secret=creds.tw_access_token_secret)
+#api = twitter.Api(consumer_key=creds.tw_consumer_key,
+#       consumer_secret=creds.tw_consumer_secret,
+#       access_token_key=creds.tw_access_token_key,
+#       access_token_secret=creds.tw_access_token_secret)
 
 '''
 Define some memory dicts/lists for keeping track of users.
@@ -35,6 +36,7 @@ def setup(bot):
     global tor_exit_nodes
     tor_exit_nodes = []
 
+@module.unblockable
 @module.event('JOIN')
 @module.rule('.*')
 def check_for_rockhos(bot, trigger):
@@ -66,7 +68,7 @@ def check_for_rockhos(bot, trigger):
 Get TOR Exit nodes list and parse the IPs into a python list.
 '''
 @module.commands('get_tor')
-#@module.interval(3600)
+@module.interval(3600)
 def get_tor_exit_nodes(bot, trigger=None):
     num = 0
     r = requests.get('https://check.torproject.org/exit-addresses')
