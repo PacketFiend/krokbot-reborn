@@ -47,9 +47,9 @@ def postStatusUpdate(bot, trigger):
 	q = select([coolkids.c.cantweet]).where(coolkids.c.nick == nick)
 	items = conn.execute(q)
 	row = items.fetchone()
-	if row[0]:
+	try:
 		canTweet = row[0]
-	else:
+	except TypeError:
 		canTweet = 0
 	bot.write(['WHOIS ', trigger.nick])
 	time.sleep(1)	# Wait for the server response
