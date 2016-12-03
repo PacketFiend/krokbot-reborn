@@ -17,7 +17,8 @@ from random import randint
 import re
 from pprint import pprint
 
-import sys, os, getopt, twitter, requests, tweepy
+
+import sys, os, getopt, twitter, requests
 
 from sqlalchemy import (create_engine, Table, Column, Text, Integer, String, MetaData, ForeignKey, exc)
 from sqlalchemy.sql import (select, exists)
