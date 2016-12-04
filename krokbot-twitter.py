@@ -8,22 +8,14 @@
 
 
 import config
+import time, re, twitter
 from sopel import module, tools
 from sopel.tools import events
-import pymysql
-import random
-import time
-from random import randint
-import re
+from MySQLdb import OperationalError
 from pprint import pprint
-
-
-import sys, os, getopt, twitter, requests
 
 from sqlalchemy import (create_engine, Table, Column, Text, Integer, String, MetaData, ForeignKey, exc)
 from sqlalchemy.sql import (select, exists)
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 
 api = twitter.Api(consumer_key=config.tw_consumer_key,
 	consumer_secret=config.tw_consumer_secret,
@@ -76,7 +68,7 @@ usage: !tweet <update>
 
 @module.commands('tweetpic')
 def postStatusUpdatePic(bot, trigger):
-	"""Posts a twitter status update with krokbot's twitter account. URLs will be removed and the remainder tweeted.
+	"""Posts a multimedia twitter status update with krokbot's twitter account. URLs will be removed and the remainder tweeted.
 usage: !tweet <update> <url> [<more update>]
 """
 	nick = trigger.nick
@@ -110,7 +102,7 @@ usage: !tweet <update> <url> [<more update>]
 	loginStatus = isLoggedIn(bot, nick)
 	if loginStatus and canTweet:
 		status = api.PostMedia(message, url)
-		bot.msg(trigger.sender, trigger.nick + ", you just tweeted: " + " " + status.text)
+		#bot.msg(trigger.sender, trigger.nick + ", you just tweeted: " + " " + status.text)
 	else:
 		if not loginStatus:
 			bot.msg(trigger.sender, "Don't be a fucking tool. I don't let just anybody tweet. Register with Nickserv.")
