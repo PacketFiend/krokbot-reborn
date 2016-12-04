@@ -11,11 +11,11 @@ import config
 import time, re, twitter
 from sopel import module, tools
 from sopel.tools import events
-from MySQLdb import OperationalError
 from pprint import pprint
 
 from sqlalchemy import (create_engine, Table, Column, Text, Integer, String, MetaData, ForeignKey, exc)
 from sqlalchemy.sql import (select, exists)
+from sqlalchemy.exc import OperationalError
 
 api = twitter.Api(consumer_key=config.tw_consumer_key,
 	consumer_secret=config.tw_consumer_secret,
