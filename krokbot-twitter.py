@@ -142,7 +142,7 @@ def showUpdates(bot, trigger):
 		if "text" in datum:
 			for channel in bot.channels:
 				if displayUpdates:
-					bot.msg(channel, "Incoming tweet from @" + datum['user']['screen_name'] + ": " + datum['text'])
+					bot.msg(channel, "Incoming tweet from @" + datum['user']['screen_name'] + "(" + datum['user']['name'] + "): " + datum['text'])
 		print datum
 
 @module.rule('.*')
