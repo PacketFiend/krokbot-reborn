@@ -6,8 +6,6 @@
 #	   used as an anti-DDoS measure.
 #
 
-# THIS IS A USELESS PUSH
-
 from sopel import module, tools, bot
 from sopel.tools.target import User, Channel
 from random import randint
@@ -171,7 +169,7 @@ def hushChannel(bot, trigger):
 
 	# Now read in a list of the cool kids, and give them all voice
 	conn = engine.connect()
-	query = "SELECT nick FROM coolkids"
+	query = "SELECT nick FROM coolkids WHERE trusted = 1"
 	items = conn.execute(query)
 	for entry in items:
 		# Results are returned as a tuple with an empty second element
@@ -191,7 +189,7 @@ def unHushChannel(bot, trigger):
 
 	# Read in a list of the cool kids, and take voice from them
 	conn = engine.connect()
-	query = "SELECT nick FROM coolkids"
+	query = "SELECT nick FROM coolkids WHERE trusted = 1"
 	items = conn.execute(query)
 	for entry in items:
 		# Results are returned as a tuple with an empty second element

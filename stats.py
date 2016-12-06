@@ -88,6 +88,9 @@ def insert_top_action(bot, trigger):
             actions.append(table)
         #count = session.query(Lathers).filter_by(name=nickname).first()
 
+        channel = trigger.args[0]
+        channel = channel.encode('ascii')
+
         for table in actions:
             session = start_db()
             rs = session.query(exists().where(table.name == nickname)).scalar()
@@ -122,6 +125,9 @@ database table we'll be querying.
 @module.rate(20)
 @module.commands('toplather', 'toplure', 'topbait', 'words')
 def get_top_stats(bot, trigger):
+    channel = trigger.args[0]
+    channel = channel.encode('ascii')
+
     if 'lather' in trigger.group(1):
         reply = "Top Lather Action"
         table = Lathers
@@ -136,7 +142,8 @@ def get_top_stats(bot, trigger):
         table = Words
 
     session = start_db()
-    top_stats = {nickname.name: nickname.count for nickname in session.query(table)}
+    top_stats = {nickname.name: nickname.count for nickname in session.query(table).filter_by(channel=channel)}
+
     session.close()
 
     stats = {k.encode('ascii'): v for k, v in top_stats.items()}
@@ -170,14 +177,14 @@ def words_stats(bot, trigger):
     line = trigger.args[1:]
     line =  map(str, line)
     #line = line.encode('ascii')
+    word_count = len(str(line).split(" "))
 
     if re.match(r'\#', trigger.sender):
+        if channel not in bot.memory['word_counts']:
+            bot.memory['word_counts'][channel] = {}
         if nickname not in bot.memory['word_counts'][channel]: # or bot.memory['word_counts'][channel].get(nickname, None) == 0:
-            bot.memory['word_counts'][channel][nickname] = 0
+            bot.memory['word_counts'][channel][nickname] = word_count
         else:
-            print(line)
-            word_count = len(str(line).split(" "))
-            print(word_count)
             bot.memory['word_counts'][channel][nickname] += word_count
             print(bot.memory['word_counts'])
     else:
@@ -191,15 +198,18 @@ def words_stats(bot, trigger):
 '''
 Dump bot.memory['word_counts'] into a database table
 '''
-@module.interval(900)
+#@module.interval(900)
+@module.interval(60)
 def dump_word_stats(bot):
     session = start_db()
     table = Words
 
-    for channel in bot.memory['word_counts'].items():
+    for channel in bot.memory['word_counts'].keys():
+        print(channel)
         for nickname, word_count in bot.memory['word_counts'][channel].items():
+            print(nickname, word_count)
         #word_count = bot.memory['word_counts'][channel][nickname]
-            rs = session.query(exists().where(table.name == nickname)).scalar()
+            rs = session.query(exists().where((table.channel == channel) & (table.name == nickname))).scalar()
 
             if rs is True:
                 try:
@@ -214,7 +224,7 @@ def dump_word_stats(bot):
             elif rs is False:
                 print("Adding new nickname to the {} stats table : {}".format(table, nickname))
                 try:
-                    rs = table(name=nickname, count=word_count, channel=channel)
+                    rs = table(channel=channel, name=nickname, count=word_count)
                     session.add(rs)
                     session.commit()
                 except:
