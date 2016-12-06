@@ -25,11 +25,9 @@ from sqlalchemy import (create_engine, Table, Column, Text, Integer, String, Met
 from sqlalchemy.sql import (select, exists)
 from sqlalchemy.exc import OperationalError
 
+engine = create_engine(config.sql_connection_string, pool_recycle = 14400)
 metadata = MetaData()
 coolkids = Table("coolkids", metadata, autoload = True, autoload_with = engine)
-
-#engine = sqlalchemy.create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
-engine = create_engine(config.sql_connection_string, pool_recycle = 14400)
 
 @module.require_admin
 @module.commands('channel_limit')
