@@ -6,6 +6,7 @@
 #	   used as an anti-DDoS measure.
 #
 
+import config
 from sopel import module, tools, bot
 from sopel.tools.target import User, Channel
 from random import randint
@@ -22,7 +23,8 @@ maxUsers = 100
 
 import sqlalchemy
 
-engine = sqlalchemy.create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+#engine = sqlalchemy.create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+engine = sqlalchemy.create_engine(config.sql_connection_string, pool_recycle = 14400)
 
 @module.require_admin
 @module.commands('channel_limit')

@@ -6,12 +6,14 @@
 # Summary: shakesperian insult generator
 #
 
+import config
 from sopel import module, tools
 import random
 from random import randint
 import sqlalchemy
 
-engine = sqlalchemy.create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+#engine = sqlalchemy.create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+engine = sqlalchemy.create_engine(config.sql_connection_string, pool_recycle = 14400)
 
 @module.commands('insult')
 def getInsult(bot, trigger):

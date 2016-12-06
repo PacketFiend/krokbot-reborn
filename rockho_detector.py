@@ -20,8 +20,9 @@ from pprint import pprint
 import sys
 import requests
 import sqlalchemy
+from sqlalchemy.exc import OperationalError
 
-engine = sqlalchemy.create_engine(sql_connection_string)
+engine = sqlalchemy.create_engine(sql_connection_string, pool_recycle = 14400)
 
 '''
 Define some memory dicts/lists for keeping track of users.
@@ -39,6 +40,7 @@ def check_for_rockhos(bot, trigger):
     match = False
     conn = engine.connect()
     query = "SELECT nick,hostmasks,greeting FROM coolkids"
+
     results = conn.execute(query)
     for item in results:
 	hostmasklist = item[1]

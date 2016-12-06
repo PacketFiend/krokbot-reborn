@@ -28,7 +28,7 @@ loggedInUsers = []
 whoisReceived = False
 displayUpdates = False
 
-engine = create_engine(config.sql_connection_string)
+engine = create_engine(config.sql_connection_string, pool_recycle = 14400)
 
 coolkids = Table('coolkids', metadata, autoload=True, autoload_with=engine)
 
