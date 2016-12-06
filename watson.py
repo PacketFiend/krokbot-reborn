@@ -18,6 +18,8 @@ api_keys = []
 api_keys.append("1c9d6cd926fc7bff7488f0a4d6597f98ab8ca2de")
 api_keys.append("f5a2025a517f32fc272844e0ddeb36ccdb117336")
 global currentApiKey
+global threshold
+threshold = 0.5
 currentApiKey = 0
 
 # Match a line not starting with ".", "!", "krokbot", "krokpot", "kdev", or "krokwhore"
@@ -26,12 +28,12 @@ def analyzeText(bot, trigger):
 	global nlp_enabled
 	if not nlp_enabled: return
 	global currentApiKey
+	global threshold
 
 	alchemy_language = AlchemyLanguageV1(api_key = api_keys[currentApiKey])
 
 	emotionDetected = False
 	emotion = ""
-	threshold = 0.5
 	print trigger
 	# This block sucks ass. Need a better way to store multiple API keys and switch between them,
 	try:
