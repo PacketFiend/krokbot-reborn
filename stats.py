@@ -16,6 +16,7 @@ from random import randint
 from sqlalchemy import (create_engine, Table, Column, Integer, String, MetaData, ForeignKey, exc)
 from sqlalchemy.sql import (select, exists)
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 import config
 import re
