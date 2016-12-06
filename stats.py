@@ -48,7 +48,7 @@ class Words(Base):
     name = Column(String)
 
 def start_db():
-    engine = create_engine('sqlite:///' + config.stats_db, connect_args={'check_same_thread': False})
+    engine = create_engine('sqlite:///' + config.stats_db, connect_args={'check_same_thread': False}, pool_recycle = 14400)
     Session = sessionmaker()
     Session.configure(bind=engine)
     session = Session()
