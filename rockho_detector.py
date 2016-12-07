@@ -7,8 +7,7 @@
 #
 
 import config
-from config import sql_connection_string
-from sopel import module, tools, config
+from sopel import module, tools
 from sopel.tools.target import User, Channel
 from sopel.tools import Identifier, iteritems, events
 from sopel.module import rule, event, commands
@@ -19,9 +18,14 @@ from pprint import pprint
 
 import sys
 import requests
-import sqlalchemy
 
-engine = sqlalchemy.create_engine(sql_connection_string)
+from sqlalchemy import (create_engine, Table, Column, Text, Integer, String, MetaData, ForeignKey, exc)
+from sqlalchemy.sql import (select, exists)
+from sqlalchemy.exc import OperationalError
+
+engine = create_engine(config.sql_connection_string, pool_recycle = 14400)
+metadata = MetaData()
+coolkids = Table("coolkids", metadata, autoload = True, autoload_with = engine)
 
 '''
 Define some memory dicts/lists for keeping track of users.
@@ -38,7 +42,8 @@ def check_for_rockhos(bot, trigger):
 
     match = False
     conn = engine.connect()
-    query = "SELECT nick,hostmasks,greeting FROM coolkids"
+    query = select([coolkids.c.nick, coolkids.c.hostmasks, coolkids.c.greeting])
+
     results = conn.execute(query)
     for item in results:
 	hostmasklist = item[1]
@@ -61,7 +66,7 @@ def check_for_rockhos(bot, trigger):
 Get TOR Exit nodes list and parse the IPs into a python list.
 '''
 @module.commands('get_tor')
-@module.interval(3600)
+#@module.interval(3600)
 def get_tor_exit_nodes(bot, trigger=None):
     num = 0
     r = requests.get('https://check.torproject.org/exit-addresses')

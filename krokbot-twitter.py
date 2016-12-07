@@ -28,7 +28,7 @@ loggedInUsers = []
 whoisReceived = False
 displayUpdates = False
 
-engine = create_engine(config.sql_connection_string)
+engine = create_engine(config.sql_connection_string, pool_recycle = 14400)
 
 coolkids = Table('coolkids', metadata, autoload=True, autoload_with=engine)
 
@@ -142,7 +142,7 @@ def showUpdates(bot, trigger):
 		if "text" in datum:
 			for channel in bot.channels:
 				if displayUpdates:
-					bot.msg(channel, "Incoming tweet from @" + datum['user']['screen_name'] + ": " + datum['text'])
+					bot.msg(channel, "Incoming tweet from @" + datum['user']['screen_name'] + "(" + datum['user']['name'] + "): " + datum['text'])
 		print datum
 
 @module.rule('.*')

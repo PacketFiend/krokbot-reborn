@@ -6,6 +6,7 @@
 #	   used as an anti-DDoS measure.
 #
 
+import config
 from sopel import module, tools, bot
 from sopel.tools.target import User, Channel
 from random import randint
@@ -20,9 +21,13 @@ lockedChannels = []
 global maxUsers
 maxUsers = 100
 
-import sqlalchemy
+from sqlalchemy import (create_engine, Table, Column, Text, Integer, String, MetaData, ForeignKey, exc)
+from sqlalchemy.sql import (select, exists)
+from sqlalchemy.exc import OperationalError
 
-engine = sqlalchemy.create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+engine = create_engine(config.sql_connection_string, pool_recycle = 14400)
+metadata = MetaData()
+coolkids = Table("coolkids", metadata, autoload = True, autoload_with = engine)
 
 @module.require_admin
 @module.commands('channel_limit')
@@ -162,6 +167,8 @@ def showChannelUsers(bot, trigger):
 def hushChannel(bot, trigger):
 	'''Sets the channel +m, and gives everyone on a predefined list voice. Used for bot parties'''
 
+	nicksToVoice = ""
+	numNicksToVoice = 0
 	bot.msg(trigger.sender, trigger.nick + ", setting " + trigger.sender + " +m and giving all the cool kids +v")
 
 	# Set the channel +m, with exptra protection agains KNOCK flood attacks
@@ -169,13 +176,15 @@ def hushChannel(bot, trigger):
 
 	# Now read in a list of the cool kids, and give them all voice
 	conn = engine.connect()
-	query = "SELECT nick FROM coolkids WHERE trusted = 1"
+	query = select([coolkids.c.nick]).where(coolkids.c.voice == 1)
 	items = conn.execute(query)
 	for entry in items:
 		# Results are returned as a tuple with an empty second element
 		nick = entry[0]
 		if nick in bot.privileges[trigger.sender].keys():
-			bot.write(['MODE', trigger.sender, "+v", nick])
+			nicksToVoice = nicksToVoice + nick + " "
+			numNicksToVoice += 1
+	bot.write(['MODE', trigger.sender, "+" + "v" * numNicksToVoice, nicksToVoice])
 
 
 @module.commands('unhush_channel')
@@ -185,17 +194,21 @@ def hushChannel(bot, trigger):
 def unHushChannel(bot, trigger):
 	'''Sets the channel -m, and removes +v from everyone on a predefined list. Used for bot parties'''
 
+	nicksToDevoice = ""
+	numNicksToDevoice = 0
 	bot.msg(trigger.sender, trigger.nick + ", setting " + trigger.sender + " -m and taking +v from all the cool kids")
 
 	# Read in a list of the cool kids, and take voice from them
 	conn = engine.connect()
-	query = "SELECT nick FROM coolkids WHERE trusted = 1"
+	query = select([coolkids.c.nick]).where(coolkids.c.voice == 1)
 	items = conn.execute(query)
 	for entry in items:
 		# Results are returned as a tuple with an empty second element
 		nick = entry[0]
 		if nick in bot.privileges[trigger.sender].keys():
-			bot.write(['MODE', trigger.sender, "-v", nick])
+			nicksToDevoice = nicksToDevoice + nick + " "
+			numNicksToDevoice += 1
+	bot.write(['MODE', trigger.sender, "-" + "v" * numNicksToDevoice, nicksToDevoice])
 
 
 	# Set the channel -m and remove no-KNOCK and invite
