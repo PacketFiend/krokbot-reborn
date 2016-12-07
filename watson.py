@@ -91,6 +91,7 @@ class TextAnalyzer:
 
 	def analyzeEmotion(self, bot, trigger):
 		if not self.nlp_enabled: return
+		self.emotionDetected = False
 		emotion = ""
 		print trigger
 		# This block sucks ass. Need a better way to store multiple API keys and switch between them,
