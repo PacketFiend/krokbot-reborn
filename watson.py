@@ -181,10 +181,6 @@ Usage: !nlp_emotion_threshold [0 <= <new value> <= 1]'''
 	else:
 		bot.msg(trigger.sender, "Enable the NLP subsystem first, fuckwad.")
 
-@module.commands('nlp_show_emotion_threshold')
-def showEmotionThreshold(bot, trigger):
-	'''Shows the current emotion detection threshold. According to the Watson docs, a value of >= 0.5 is a positive match.'''
-
 @module.require_admin
 @module.commands('nlp_enable')
 def enableNlp(bot, trigger):
