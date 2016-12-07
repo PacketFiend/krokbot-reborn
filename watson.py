@@ -22,15 +22,13 @@ watson_apikeys = Table('watson_apikeys', metadata, autoload=True, autoload_with=
 
 
 class APIKey:
+	'''A class to contain a list of all API keys in use, and cycle through them when we reach a specified number of API calls'''
 
 	def __init__(self):
 		self.currentAPIKey = 0
 		self.api_keys = []
 		self.queryCount = 1000
 		#api_keys.append("1c9d6cd926fc7bff7488f0a4d6597f98ab8ca2de")	# Striek API key #1 - CC# attached
-		#self.api_keys.append("f5a2025a517f32fc272844e0ddeb36ccdb117336") # Striek
-		#self.api_keys.append("7719aa5300998a90464e4cb36a6858c072d2096a") # Syini666
-		#self.api_keys.append("39f58aeb7f09742f80fbebbe1bdc43ac80318b93") # ekim
 
 		# Load API keys from the database
 		query = select([watson_apikeys.c.key, watson_apikeys.c.queries, watson_apikeys.c.owner])
@@ -43,10 +41,18 @@ class APIKey:
 		# Get the current query count for this key
 		self.queryCount = self.getQueryCount()
 
+	class exc:
+		'''A subclass which holds any exceptions raised by this class. Currently, just used for NoMoreKeysException.'''
+		class NoMoreKeysException(Exception):
+			def __init__(self,*args,**kwargs):
+				Exception.__init__(self,*args,**kwargs)
+	
 	def next(self):
+		'''Cycles to the next API key in the list. Return False if we've exhausted the available keys'''
 		self.currentAPIKey += 1
 		print "currentApiKey: " + str(self.currentAPIKey) + "; len(self.api_keys): " + str(len(self.api_keys))
 		if self.currentAPIKey > len(self.api_keys)-1:
+			raise APIKey.exc.NoMoreKeysException("No more API keys available!")
 			return False
 		else:
 			self.name = self.api_keys[self.currentAPIKey]
@@ -55,9 +61,12 @@ class APIKey:
 			return True
 
 	def first(self):
+		'''Resets us back to the first key in the list. Generally called from !nlp_enable.'''
 		self.currentAPIKey = 0
+		self.name = self.api_keys[self.currentAPIKey]
 
 	def updateQueryCount(self):
+		'''Updates the in-memory record of the current query count, and writes that value to the DB'''
 		self.queryCount += 1
 		query = update(watson_apikeys).where(watson_apikeys.c.key == self.name).values(queries = self.queryCount)
 		conn = engine.connect()
@@ -65,7 +74,7 @@ class APIKey:
 		return self.queryCount
 
 	def getQueryCount(self):
-		# Pull the current number of queries the key has used
+		'''Returns the number of queries that the currently in use API key has performed'''
 		query = select([watson_apikeys.c.queries]).where(watson_apikeys.c.key == self.name)
 		conn = engine.connect()
 		result = conn.execute(query)
@@ -74,6 +83,7 @@ class APIKey:
 		return self.queryCount
 
 	def getCurrentKey(self):
+		'''Returns a dict containing information on the currently in use API key'''
 		query = select([watson_apikeys.c.key, watson_apikeys.c.queries, watson_apikeys.c.owner]).where(watson_apikeys.c.key == self.name)
 		conn = engine.connect()
 		result = conn.execute(query)
@@ -81,43 +91,52 @@ class APIKey:
 		return keyInfo
 
 class TextAnalyzer:
+	''' A class to analyze text messages from an IRC channel and make cutesy-tutesy comments about what
+	we think the state of the commenter is.'''
 
 	def __init__(self, name):
+		'''Opens a dialogue with Watson and sets up sane defaults. Also sets up our API keys by calling instantiating am APIKey object'''
 		self.APIKey = APIKey()
-		self.threshold = 0.6
+		self.threshold = config.watson_emotion_detection_threshold
 		self.nlp_enabled = False
 		self.emotionDetected = False
 		self.alchemy_language = AlchemyLanguageV1(api_key = self.APIKey.name)
 
 	def analyzeEmotion(self, bot, trigger):
-		if not self.nlp_enabled: return
+		'''Runs IRC messages through Watson's Alchemy API, attempting to identify emotional context.'''
+		if not self.nlp_enabled:
+			return
 		self.emotionDetected = False
 		emotion = ""
 		print trigger
 		# This block sucks ass. Need a better way to store multiple API keys and switch between them,
 		if self.APIKey.queryCount >= 100:
 			bot.msg(trigger.sender, "Cycling to next API key!")
-			if not self.APIKey.next():
-				self.nlp_enabled = False
-				bot.msg(trigger.sender, "API query limit exhausted with current set of keys. Disabling NLP subsystem.")
+			# If there's no more API keys we can use, disable the NLP subsystem and exit. Otherwise, move to the next key.
+			try:
+				self.APIKey.next()
+				self.analyzeEmotion(bot, trigger)	# Start over with new key, then exit.
 				return
-			else:
-				# Start this function from the beginning
-				self.analyzeEmotion(bot, trigger)
-				return			
+			except APIKey.exc.NoMoreKeysException:
+				self.nlp_enabled = False
+				raise APIKey.exc.NoMoreKeysException("This class is entirelely uncontaminated with API keys! (https://www.youtube.com/watch?v=B3KBuQHHKx0)")
+				return
 	        try:
+			# This is the block that actually sends messages off to Alchemy for processing.
 	                result = json.dumps(
 	                        self.alchemy_language.combined(
 	                                text=trigger,
 	                                extract='doc-emotion',
 	                                max_items=1)
 	                        )
+			# Make sure we keep track of how many API queries we've used
 			self.APIKey.updateQueryCount()
 	        except WatsonException, message:
+			# This really shouldn't happen if we set the max query count correctly. This means this block is untestable :(
 	                if "daily-transaction-limit-exceeded" in str(message):
 	                        bot.msg(trigger.sender, "API daily transaction limit exceeded. Switching to next key :D")
 				self.APIKey.next(bot, trigger)
-				bot.msg(trigger.sender, "API Key is now: " + self.APIKey)
+				print "API Key is now: " + self.APIKey
 	                return
 
 	        print result
@@ -152,15 +171,17 @@ class TextAnalyzer:
 	                        emotion = "".join(lastEmotion)
 	                bot.msg(trigger.sender, "Why so " + emotion + ", " + trigger.nick + "?")
 
-
 emotionAnalyzer = TextAnalyzer('emotionAnalyzer')
 
 # Match a line not starting with ".", "!", "krokbot", "krokpot", "kdev", or "krokwhore"
 @module.rule('^(?!krokbot|krokwhore|krokpot|kdev)^[^\.!].*')
 def analyzeText(bot, trigger):
+	'''Passes messages to the TextAnalyzer class for analysis by the Big Blue'''
 
-	emotionAnalyzer.analyzeEmotion(bot, trigger)
-
+	try:
+		emotionAnalyzer.analyzeEmotion(bot, trigger)
+	except APIKey.exc.NoMoreKeysException, message:
+		bot.msg(trigger.sender, "NoMoreKeysException: " + str(message))
 
 @module.commands('nlp_emotion_threshold')
 def setEmotionThreshold(bot, trigger):
