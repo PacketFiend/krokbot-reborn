@@ -13,26 +13,26 @@ from watson_developer_cloud import AlchemyLanguageV1, WatsonException
 from pprint import pprint
 
 from sqlalchemy import (create_engine, Table, Column, Text, Integer, String, MetaData, ForeignKey, exc)
-from sqlalchemy.sql import (select, exists, update)
+from sqlalchemy.sql import (select, exists, update, insert)
 from sqlalchemy.exc import OperationalError
 
 engine = create_engine(config.sql_connection_string, pool_recycle = 14400)
 metadata = MetaData()
 watson_apikeys = Table('watson_apikeys', metadata, autoload=True, autoload_with=engine)
+watson_krok = Table('watson_krok', metadata, autoload=True, autoload_with=engine)
+watson_kroksubjects = Table('watson_kroksubjects', metadata, autoload=True, autoload_with=engine)
 
-
-class APIKey:
+class APIKeyClass:
 	'''A class to contain a list of all API keys in use, and cycle through them when we reach a specified number of API calls'''
 
 	def __init__(self):
 		self.currentAPIKey = 0
 		self.api_keys = []
 		self.queryCount = 1000
-		#api_keys.append("1c9d6cd926fc7bff7488f0a4d6597f98ab8ca2de")	# Striek API key #1 - CC# attached
+		#self.api_keys.append("1c9d6cd926fc7bff7488f0a4d6597f98ab8ca2de")	# Striek API key #1 - CC# attached
 
 		# Load API keys from the database
 		query = select([watson_apikeys.c.key, watson_apikeys.c.queries, watson_apikeys.c.owner])
-		print query
 		conn = engine.connect()
 		keys = conn.execute(query)
 		for key in keys:
@@ -48,7 +48,8 @@ class APIKey:
 				Exception.__init__(self,*args,**kwargs)
 	
 	def next(self):
-		'''Cycles to the next API key in the list. Return False if we've exhausted the available keys'''
+		'''Cycles to the next API key in the list. Return False if we've exhausted the available keys
+		Returns the key we've switched to.'''
 		self.currentAPIKey += 1
 		print "currentApiKey: " + str(self.currentAPIKey) + "; len(self.api_keys): " + str(len(self.api_keys))
 		if self.currentAPIKey > len(self.api_keys)-1:
@@ -56,17 +57,18 @@ class APIKey:
 			return False
 		else:
 			self.name = self.api_keys[self.currentAPIKey]
-			alchemy_language = AlchemyLanguageV1(api_key = self.name)
 			self.queryCount = self.getQueryCount()
-			return True
+			return self.name
 
 	def first(self):
 		'''Resets us back to the first key in the list. Generally called from !nlp_enable.'''
 		self.currentAPIKey = 0
 		self.name = self.api_keys[self.currentAPIKey]
+		self.getQueryCount()
 
 	def updateQueryCount(self):
 		'''Updates the in-memory record of the current query count, and writes that value to the DB'''
+		self.queryCount = self.getQueryCount()
 		self.queryCount += 1
 		query = update(watson_apikeys).where(watson_apikeys.c.key == self.name).values(queries = self.queryCount)
 		conn = engine.connect()
@@ -90,35 +92,40 @@ class APIKey:
 		keyInfo = result.fetchone()
 		return keyInfo
 
+APIKey = APIKeyClass()
+
 class TextAnalyzer:
 	''' A class to analyze text messages from an IRC channel and make cutesy-tutesy comments about what
 	we think the state of the commenter is.'''
 
+	nlp_enabled = True
+
 	def __init__(self, name):
 		'''Opens a dialogue with Watson and sets up sane defaults. Also sets up our API keys by calling instantiating am APIKey object'''
-		self.APIKey = APIKey()
 		self.threshold = config.watson_emotion_detection_threshold
-		self.nlp_enabled = False
 		self.emotionDetected = False
-		self.alchemy_language = AlchemyLanguageV1(api_key = self.APIKey.name)
+		self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.name)
+		self.nlp_enabled = False
 
 	def analyzeEmotion(self, bot, trigger):
 		'''Runs IRC messages through Watson's Alchemy API, attempting to identify emotional context.'''
-		if not self.nlp_enabled:
+		if not TextAnalyzer.nlp_enabled or not self.nlp_enabled:
 			return
 		self.emotionDetected = False
 		emotion = ""
+		channel = trigger.sender
+		channel = "#test1"
 		print trigger
 		# This block sucks ass. Need a better way to store multiple API keys and switch between them,
-		if self.APIKey.queryCount >= 100:
-			bot.msg(trigger.sender, "Cycling to next API key!")
+		if APIKey.queryCount >= 990:
+			bot.msg(channel, "Cycling to next API key!")
 			# If there's no more API keys we can use, disable the NLP subsystem and exit. Otherwise, move to the next key.
 			try:
-				self.APIKey.next()
+				self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
 				self.analyzeEmotion(bot, trigger)	# Start over with new key, then exit.
 				return
 			except APIKey.exc.NoMoreKeysException:
-				self.nlp_enabled = False
+				TextAnalyzer.nlp_enabled = False
 				raise APIKey.exc.NoMoreKeysException("This class is entirelely uncontaminated with API keys! (https://www.youtube.com/watch?v=B3KBuQHHKx0)")
 				return
 	        try:
@@ -130,13 +137,13 @@ class TextAnalyzer:
 	                                max_items=1)
 	                        )
 			# Make sure we keep track of how many API queries we've used
-			self.APIKey.updateQueryCount()
+			APIKey.updateQueryCount()
 	        except WatsonException, message:
 			# This really shouldn't happen if we set the max query count correctly. This means this block is untestable :(
 	                if "daily-transaction-limit-exceeded" in str(message):
-	                        bot.msg(trigger.sender, "API daily transaction limit exceeded. Switching to next key :D")
-				self.APIKey.next(bot, trigger)
-				print "API Key is now: " + self.APIKey
+	                        bot.msg(channel, "API daily transaction limit exceeded. Switching to next key :D (" + str(message))
+				self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
+				print "API Key is now: " + APIKey.name
 	                return
 
 	        print result
@@ -169,17 +176,97 @@ class TextAnalyzer:
 	                        emotion = " ".join(lastEmotion)
 	                else:
 	                        emotion = "".join(lastEmotion)
-	                bot.msg(trigger.sender, "Why so " + emotion + ", " + trigger.nick + "?")
+			if channel == "#test1":
+				bot.msg(channel, trigger.nick + "> " + trigger)
+	                bot.msg(channel, "Why so " + emotion + ", " + trigger.nick + "?")
 
+	def analyzeSubject(self, bot, trigger):
+		'''Runs IRC messages through Watson's Alchemy API, attempting to identify topical context.'''
+		if not TextAnalyzer.nlp_enabled or not self.nlp_enabled:
+			return
+		subjects = []
+		channel = trigger.sender
+		channel = "#test1"
+		print trigger
+		# This block sucks ass. Need a better way to store multiple API keys and switch between them,
+		if APIKey.queryCount >= 990:
+			bot.msg(channel, "Cycling to next API key!")
+			# If there's no more API keys we can use, disable the NLP subsystem and exit. Otherwise, move to the next key.
+			try:
+				self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
+				self.analyzeEmotion(bot, trigger)	# Start over with new key, then exit.
+				return
+			except APIKey.exc.NoMoreKeysException:
+				TextAnalyzer.nlp_enabled = False
+				raise APIKey.exc.NoMoreKeysException("This class is entirelely uncontaminated with API keys! (https://www.youtube.com/watch?v=B3KBuQHHKx0)")
+				return
+	        try:
+			# This is the block that actually sends messages off to Alchemy for processing.
+	                result = json.dumps(
+	                        self.alchemy_language.concepts(
+	                                text=trigger,
+	                                show_source_text = 1,
+					linked_data = 0
+	                                )
+	                        )
+			# Make sure we keep track of how many API queries we've used
+			APIKey.updateQueryCount()
+	        except WatsonException, message:
+			# This really shouldn't happen if we set the max query count correctly. This means this block is untestable :(
+	                if "daily-transaction-limit-exceeded" in str(message):
+	                        bot.msg(channel, "API daily transaction limit exceeded. Switching to next key :D (" + str(message))
+				self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
+				print "API Key is now: " + APIKey.name
+	                return
+
+		json_data = json.loads(result)
+		# Are there any concepts identified in the result?
+		if json_data['concepts']:
+			bot.msg(channel, "Concepts identified for \"" + trigger + "\": ")
+			conn = engine.connect()
+
+			# Is this krok is already present in the database?
+			query = select([watson_krok.c.text]).where(watson_krok.c.text == trigger)
+			result = conn.execute(query)
+			if result.rowcount == 0:
+
+				# It's not, so put it there, unless it's already present (redundant, I know...)
+				query = watson_krok.insert().values(text = trigger).prefix_with("IGNORE")
+				result = conn.execute(query)
+
+				# Pull the key ID for the krok we just inserted. (Can a the ResultProxy give us this info?)
+				query = select([watson_krok.c.krokid]).where(watson_krok.c.text == trigger)
+				result = conn.execute(query)
+				krokID = result.first()[0]
+
+ 				# Now, update kroksubjects with a list of every subject identified for that krok, and its relevance.
+
+				for datum in json_data['concepts']:
+					subject = datum['text']
+					bot.msg(channel, subject + " with a confidence factor of " + datum['relevance'])
+					query = watson_kroksubjects.insert().values(krokid = krokID, subject = subject, relevance = datum['relevance'])
+					result = conn.execute(query)
+
+		print json_data['concepts']
+		print result
+		
 emotionAnalyzer = TextAnalyzer('emotionAnalyzer')
+subjectAnalyzer = TextAnalyzer('subjectAnalyzer')
+subjectAnalyzer.nlp_enabled = True
 
 # Match a line not starting with ".", "!", "krokbot", "krokpot", "kdev", or "krokwhore"
+@module.unblockable
 @module.rule('^(?!krokbot|krokwhore|krokpot|kdev)^[^\.!].*')
 def analyzeText(bot, trigger):
 	'''Passes messages to the TextAnalyzer class for analysis by the Big Blue'''
+	# Ignore this rule if it's not rockho
+	#if "ct.charter.com" not in trigger.hostmask:
+	#	return
 
 	try:
 		emotionAnalyzer.analyzeEmotion(bot, trigger)
+		subjectAnalyzer.analyzeSubject(bot, trigger)
+
 	except APIKey.exc.NoMoreKeysException, message:
 		bot.msg(trigger.sender, "NoMoreKeysException: " + str(message))
 
@@ -187,7 +274,7 @@ def analyzeText(bot, trigger):
 def setEmotionThreshold(bot, trigger):
 	'''Sets a new threshold for emotion detection, or shows current threshold if no argument is given. Defaults to 0.6. Must be 0 <= threshold <= 1
 Usage: !nlp_emotion_threshold [0 <= <new value> <= 1]'''
-	if emotionAnalyzer.nlp_enabled:
+	if TextAnalyzer.nlp_enabled:
 		if trigger.group(2):
 			args = trigger.group(2).split()
 			newThreshold = float(args[0])
@@ -205,38 +292,80 @@ Usage: !nlp_emotion_threshold [0 <= <new value> <= 1]'''
 @module.require_admin
 @module.commands('nlp_enable')
 def enableNlp(bot, trigger):
-	'''Enables the natural language processing subsystem. Requires admin access.'''
-	if emotionAnalyzer.nlp_enabled:
-		bot.msg(trigger.sender, "Natural language processing is already enabled, fucktard.")
+	'''Enables the natural language processing subsystems. Requires admin access.'''
+	channel = trigger.sender
+	if trigger.group(2) == "emotion":
+		if emotionAnalyzer.nlp_enabled:
+			bot.msg(channel, "Emotional analysis is already enabled, fucktard.")
+		else:
+			emotionAnalyzer.nlp_enabled = True
+			bot.msg(channel, "Emotional analysis enabled")
+		return
+	elif trigger.group(2) == "subject":
+		if subjectAnalyzer.nlp_enabled:
+			bot.msg(channel, "Subject analysis is already enabled, fucktard.")
+		else:
+			subjectAnalyzer.nlp_enabled = True
+			bot.msg(channel, "Subject analysis enabled.")
+		return
 	else:
-		emotionAnalyzer.nlp_enabled = True
-		emotionAnalyzer.APIKey.first()
-		bot.msg(trigger.sender, "Natural language processing susbsystems enabled.")
+		if TextAnalyzer.nlp_enabled:
+			bot.msg(trigger.sender, "Natural language processing is already enabled, fucktard.")
+		else:
+			TextAnalyzer.nlp_enabled = True
+			APIKey.first()
+			bot.msg(trigger.sender, "Natural language processing susbsystems enabled.")
 
 @module.require_admin
 @module.commands('nlp_disable')
-def disableNlp(bot, trigger):
-	'''Disables the natural language processing subsystem. Requires admin access.'''
-	if not emotionAnalyzer.nlp_enabled:
-		bot.msg(trigger.sender, "Natural language processing is already disabled, fucktard.")
+def disbleNlp(bot, trigger):
+	'''Disables the natural language processing subsystems. Requires admin access.'''
+	channel = trigger.sender
+	if trigger.group(2) == "emotion":
+		if not emotionAnalyzer.nlp_enabled:
+			bot.msg(channel, "Emotional analysis is already disabled, fucktard.")
+		else:
+			emotionAnalyzer.nlp_enabled = False
+			bot.msg(channel, "Emotional analysis disabled")
+		return
+	elif trigger.group(2) == "subject":
+		if not subjectAnalyzer.nlp_enabled:
+			bot.msg(channel, "Subject analysis is already disabled, fucktard.")
+		else:
+			subjectAnalyzer.nlp_enabled = False
+			bot.msg(channel, "Subject analysis disabled.")
+		return
 	else:
-		emotionAnalyzer.nlp_enabled = False
-		bot.msg(trigger.sender, "Natural language processing susbsystems disabled.")
+		if not TextAnalyzer.nlp_enabled:
+			bot.msg(trigger.sender, "Natural language processing is already disabled, fucktard.")
+		else:
+			TextAnalyzer.nlp_enabled = False
+			bot.msg(trigger.sender, "Natural language processing susbsystems disabled.")
 
 @module.commands('nlp_status')
 def getNlpStatus(bot, trigger):
 	'''Displays the current status of the NLP subsystem.'''
-	if emotionAnalyzer.nlp_enabled:
-		bot.msg(trigger.sender, "NLP subsystem is active!")
+	channel = trigger.sender
+	if TextAnalyzer.nlp_enabled:
+		bot.msg(channel, "NLP subsystem is active!")
 	else:
-		bot.msg(trigger.sender, "Sorry, NLP subsystem is offline.")
+		bot.msg(channel, "Sorry, NLP subsystem is offline.")
+
+	if emotionAnalyzer.nlp_enabled:
+		bot.msg(channel, "Emotional analysis: Online")
+	else:
+		bot.msg(channel, "Emotional analysis: Offline")
+	if subjectAnalyzer.nlp_enabled:
+		bot.msg(channel, "Subject analysis: Online")
+	else:
+		bot.msg(channel, "Subject analysis: Offline")
 
 @module.require_admin
 @module.commands('nlp_current_key')
 def showKeyInfo(bot, trigger):
 	'''Shows the key currently in use via PRIVMSG to the requester. Requires admin access.'''
-	if emotionAnalyzer.nlp_enabled:
-		keyInfo = emotionAnalyzer.APIKey.getCurrentKey()
+	if TextAnalyzer.nlp_enabled:
+		keyInfo = APIKey.getCurrentKey()
 		bot.msg(trigger.nick, "Current API key: " + keyInfo['key'])
 		bot.msg(trigger.nick, "Current query count: " + str(keyInfo['queries']))
 		bot.msg(trigger.nick, "Key owner: " + keyInfo['owner'])
