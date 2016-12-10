@@ -333,12 +333,12 @@ def analyzeText(bot, trigger):
     emotions = []
 
     try:
+        # Send the triggering line off for analysis
         emotions = emotionAnalyzer.analyzeEmotion(bot, trigger)
         concepts = subjectAnalyzer.analyzeSubject(bot, trigger)
-        bot.msg(channel, "Concepts identified for \"" + trigger + "\": ")
-        for emotion in emotions:
-            bot.msg(channel, str(emotion) + " with a confidence factor of " + str(emotions[emotion]))
 
+        # If we identified any topics in this krok, record it, along with
+        # and topics and emotional context identified
 	if concepts:
             subjectHandler.recordKrok(trigger)
             subjectHandler.recordSubjects(trigger, concepts)
