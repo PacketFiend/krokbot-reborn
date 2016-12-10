@@ -11,6 +11,7 @@ import random
 import time
 import sys
 import requests
+import krok
 
 global usersToSpam
 usersToSpam = []
@@ -70,3 +71,12 @@ def snedSpamMessage(bot, trigger):
 		message = trigger.nick + " (" + trigger.hostmask + ") has " + event + trigger.sender
 		bot.msg(nick, message)
 	print trigger.hostmask
+
+@module.interval(10)
+def messageSpam(bot):
+	'''Spams every user on the list. Interval can be any multiple of 10 seconds'''
+
+	global usersToSpam
+	for nick in usersToSpam:
+		rand_krok = krok.random_krok()
+		bot.msg(nick, rand_krok)
