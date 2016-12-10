@@ -21,6 +21,7 @@ metadata = MetaData()
 watson_apikeys = Table('watson_apikeys', metadata, autoload=True, autoload_with=engine)
 watson_krok = Table('watson_krok', metadata, autoload=True, autoload_with=engine)
 watson_kroksubjects = Table('watson_kroksubjects', metadata, autoload=True, autoload_with=engine)
+watson_krokemotions = Table('watson_krokemotions', metadata, autoload=True, autoload_with=engine)
 
 class APIKeyClass:
     '''A class to contain a list of all API keys in use, and cycle through them when we
@@ -121,7 +122,7 @@ class TextAnalyzer:
         if not TextAnalyzer.master_nlp_enabled or not self.nlp_enabled:
             return
         self.emotionDetected = False
-        emotion = ""
+        emotions = {}
         channel = trigger.sender
         channel = "#test1"
         print trigger
@@ -131,12 +132,12 @@ class TextAnalyzer:
             # Otherwise, move to the next key.
             try:
                 self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
-                self.analyzeEmotion(bot, trigger)   # Start over with new key, then exit.
-                return
+                emotions = self.analyzeEmotion(bot, trigger)   # Start over with new key, then exit.
+                return emotions
             except APIKey.exc.NoMoreKeysException:
-                raise APIKey.exc.NoMoreKeysException("This class is entirelely uncontaminated with API keys! (https://www.youtube.com/watch?v=B3KBuQHHKx0). Disabling NLP subsystem.")
 		TextAnalyzer.master_nlp_enabled = False
-                return
+                raise APIKey.exc.NoMoreKeysException("This class is entirelely uncontaminated with API keys! (https://www.youtube.com/watch?v=B3KBuQHHKx0). Disabling NLP subsystem.")
+
         try:
             # This is the block that actually sends messages off to Alchemy for processing.
             result = json.dumps(
@@ -147,6 +148,7 @@ class TextAnalyzer:
                     )
                 # Make sure we keep track of how many API queries we've used
             APIKey.updateQueryCount()
+
         except WatsonException, message:
             # This really shouldn't happen if we set the max query count correctly.
             # This means this block is untestable :(
@@ -161,35 +163,26 @@ class TextAnalyzer:
         json_data = json.loads(result)
 
         if float(json_data['docEmotions']['anger']) > self.threshold:
+            emotions["anger"] = float(json_data['docEmotions']['anger'])
             self.emotionDetected = True
-            emotion += "angry, "
         if float(json_data['docEmotions']['joy']) > self.threshold:
+            emotions["joy"] = float(json_data['docEmotions']['joy'])
             self.emotionDetected = True
-            emotion += "joyous, "
         if float(json_data['docEmotions']['fear']) > self.threshold:
+            emotions["fear"] = float(json_data['docEmotions']['fear'])
             self.emotionDetected = True
-            emotion += "afraid, "
         if float(json_data['docEmotions']['sadness']) > self.threshold:
+            emotions["sadness"] = float(json_data['docEmotions']['sadness'])
             self.emotionDetected = True
-            emotion += "sad, "
         if float(json_data['docEmotions']['disgust']) > self.threshold:
+            emotions["disgust"] = float(json_data['docEmotions']['disgust'])
             self.emotionDetected = True
-            emotion += "disgusted, "
 
-        # Say something cute if we think we've detected some kind of sentiment...
-        if self.emotionDetected:
-            # These next few lines construct a grammatically correct list of emotions
-            # We need to replace the last ", " with " and "
-            emotion = emotion.rstrip(", ")
-            lastEmotion = emotion.rsplit(",", 1)
-            if len(lastEmotion) > 1:
-               lastEmotion[1] = lastEmotion[1].replace(" ", "and ")
-               emotion = " ".join(lastEmotion)
-            else:
-               emotion = "".join(lastEmotion)
-            if channel == "#test1":
-                bot.msg(channel, trigger.nick + "> " + trigger)
-                bot.msg(channel, "Why so " + emotion + ", " + trigger.nick + "?")
+
+        if self.emotionDetected == True:
+	        return emotions
+        else:
+                return False
 
     def analyzeSubject(self, bot, trigger):
         '''Runs IRC messages through Watson's Alchemy API, attempting to identify
@@ -206,12 +199,12 @@ class TextAnalyzer:
             # Otherwise, move to the next key.
             try:
                 self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
-                self.analyzeSubject(bot, trigger)   # Start over with new key, then exit.
-                return
+                concepts = self.analyzeSubject(bot, trigger)   # Start over with new key, then exit.
+                return concepts
             except APIKey.exc.NoMoreKeysException:
-                raise APIKey.exc.NoMoreKeysException("This class is entirelely uncontaminated with API keys! (https://www.youtube.com/watch?v=B3KBuQHHKx0). Disabling NLP subsystem.")
                 TextAnalyzer.master_nlp_enabled = False
-                return
+                raise APIKey.exc.NoMoreKeysException("This class is entirelely uncontaminated with API keys! (https://www.youtube.com/watch?v=B3KBuQHHKx0). Disabling NLP subsystem.")
+
         try:
             # This is the block that actually sends messages off to Alchemy for processing.
             result = json.dumps(
@@ -233,44 +226,99 @@ class TextAnalyzer:
             else:
                 bot.msg(channel, "Unhandled Watson exception processing text :(")
 
+	print result
         json_data = json.loads(result)
-        # Are there any concepts identified in the result?
+	concepts = json_data['concepts']
         if json_data['concepts']:
-            bot.msg(channel, "Concepts identified for \"" + trigger + "\": ")
-            conn = engine.connect()
+            print "Returning concepts"
+            return concepts
+        else:
+            print "Returning false"
+            return False
 
-            # Is this krok is already present in the database?
-            query = select([watson_krok.c.text]).where(watson_krok.c.text == trigger)
-            result = conn.execute(query)
-            if result.rowcount == 0:
-
-                # It's not, so put it there, unless it's already present (redundant)
-                query = watson_krok.insert().values(text = trigger).prefix_with("IGNORE")
-                result = conn.execute(query)
-
-                # Pull the key ID for the krok we just inserted.
-                # (Can a the ResultProxy give us this info?)
-                query = select([watson_krok.c.krokid]).where(watson_krok.c.text == trigger)
-                result = conn.execute(query)
-                krokID = result.first()[0]
-
-                # Now, update kroksubjects with a list of every subject identified for
-                # that krok, and its relevance.
-
-                for datum in json_data['concepts']:
-                    subject = datum['text']
-                    bot.msg(channel, subject + " with a confidence factor of " \
-                           + datum['relevance'])
-                    query = watson_kroksubjects.insert().values(krokid = krokID,
-                                                         subject = subject,
-                                                         relevance = datum['relevance'])
-                    result = conn.execute(query)
-
-        print json_data['concepts']
-        print result
         
+class DataHandler:
+    '''A class to handle messages and identified context'''
+
+    master_nlp_enabled = False
+
+    def __init__(self, name):
+        self.conn = engine.connect()
+        self.name = name
+        self.nlp_enabled = False
+
+    def recordKrok(self, trigger):
+
+        if not self.nlp_enabled:
+            return
+
+        # Is this krok already present in the database?
+        query = select([watson_krok.c.text]).where(watson_krok.c.text == trigger)
+	result = self.conn.execute(query)
+        if result.rowcount == 0:
+
+            # It's not, so put it there.
+            query = watson_krok.insert().values(text = trigger).prefix_with("IGNORE")
+            result = self.conn.execute(query)
+            return True
+
+        else:
+            return False
+
+    def recordSubjects(self, trigger, concepts):
+        '''Tags krok already present in the database with associated subjects'''
+
+        if not self.nlp_enabled:
+            return
+
+        # Pull the key ID for the krok we just inserted.
+        # (Can a ResultProxy object give us this info?)
+        query = select([watson_krok.c.krokid]).where(watson_krok.c.text == trigger)
+        result = self.conn.execute(query)
+        if result.rowcount != 0:
+            krokID = result.first()[0]
+
+            # Now, update kroksubjects with a list of every subject identified for
+            # that krok, and its relevance.
+            for datum in concepts:
+                subject = datum['text']
+                query = watson_kroksubjects.insert().values(krokid = krokID,
+                                                     subject = subject,
+                                                     relevance = datum['relevance'])
+                result = self.conn.execute(query)
+            return True
+        else:
+            return False
+
+    def recordEmotions(self, trigger, emotions):
+        '''Tags krok already present in the database with associated subjects'''
+
+        if not self.nlp_enabled:
+            return
+
+        # Pull the key ID for the krok we just inserted.
+        # (Can a ResultProxy object give us this info?)
+        query = select([watson_krok.c.krokid]).where(watson_krok.c.text == trigger)
+        result = self.conn.execute(query)
+        if result.rowcount != 0:
+            krokID = result.first()[0]
+
+            # Now, update kroksubjects with a list of every subject identified for
+            # that krok, and its relevance.
+            for emotion in emotions:
+                confidence = emotions[emotion]
+                query = watson_krokemotions.insert().values(krokid = krokID,
+                                                     emotion = emotion,
+                                                     confidence = confidence)
+                result = self.conn.execute(query)
+            return True
+        else:
+            return False
+    
 emotionAnalyzer = TextAnalyzer('emotionAnalyzer')
 subjectAnalyzer = TextAnalyzer('subjectAnalyzer')
+emotionHandler = DataHandler('emotionHandler')
+subjectHandler = DataHandler('subjectHandler')
 
 # Match a line not starting with ".", "!", "krokbot", "krokpot", "kdev", or "krokwhore"
 @module.unblockable
@@ -278,12 +326,25 @@ subjectAnalyzer = TextAnalyzer('subjectAnalyzer')
 def analyzeText(bot, trigger):
     '''Passes messages to the TextAnalyzer class for analysis by the Big Blue'''
     # Ignore this rule if it's not rockho
-    if "ct.charter.com" not in trigger.hostmask:
-        return
+    #if "ct.charter.com" not in trigger.hostmask:
+    #    return
+    channel = "#test1"
+    concepts = []
+    emotions = []
 
     try:
-        emotionAnalyzer.analyzeEmotion(bot, trigger)
-        subjectAnalyzer.analyzeSubject(bot, trigger)
+        emotions = emotionAnalyzer.analyzeEmotion(bot, trigger)
+        concepts = subjectAnalyzer.analyzeSubject(bot, trigger)
+        bot.msg(channel, "Concepts identified for \"" + trigger + "\": ")
+        for emotion in emotions:
+            bot.msg(channel, str(emotion) + " with a confidence factor of " + str(emotions[emotion]))
+
+	if concepts:
+            subjectHandler.recordKrok(trigger)
+            subjectHandler.recordSubjects(trigger, concepts)
+            if emotions: 
+                subjectHandler.recordEmotions(trigger, emotions)
+            
 
     except APIKey.exc.NoMoreKeysException, message:
         bot.msg(trigger.sender, "NoMoreKeysException: " + str(message))
@@ -319,6 +380,7 @@ def enableNlp(bot, trigger):
             bot.msg(channel, "Emotional analysis is already enabled, fucktard.")
         else:
             emotionAnalyzer.nlp_enabled = True
+            emotionHandler.nlp_enabled = True
             bot.msg(channel, "Emotional analysis enabled")
         return
     elif trigger.group(2) == "subject":
@@ -326,6 +388,7 @@ def enableNlp(bot, trigger):
             bot.msg(channel, "Subject analysis is already enabled, fucktard.")
         else:
             subjectAnalyzer.nlp_enabled = True
+            subjectHandler.nlp_enabled = True
             bot.msg(channel, "Subject analysis enabled.")
         return
     else:
@@ -333,6 +396,7 @@ def enableNlp(bot, trigger):
             bot.msg(trigger.sender, "Natural language processing is already enabled, fucktard.")
         else:
             TextAnalyzer.master_nlp_enabled = True
+            DataHandler.master_nlp_enabled = True
             APIKey.first()
             bot.msg(trigger.sender, "Natural language processing susbsystems enabled.")
 
@@ -346,6 +410,7 @@ def disbleNlp(bot, trigger):
             bot.msg(channel, "Emotional analysis is already disabled, fucktard.")
         else:
             emotionAnalyzer.nlp_enabled = False
+            emotionHandler.nlp_enabled = False
             bot.msg(channel, "Emotional analysis disabled")
         return
     elif trigger.group(2) == "subject":
@@ -353,6 +418,7 @@ def disbleNlp(bot, trigger):
             bot.msg(channel, "Subject analysis is already disabled, fucktard.")
         else:
             subjectAnalyzer.nlp_enabled = False
+            subjectHandler.nlp_enabled = False
             bot.msg(channel, "Subject analysis disabled.")
         return
     else:
@@ -360,6 +426,7 @@ def disbleNlp(bot, trigger):
             bot.msg(trigger.sender, "Natural language processing is already disabled, fucktard.")
         else:
             TextAnalyzer.master_nlp_enabled = False
+            DataHandler.master_nlp_enabled = False
             bot.msg(trigger.sender, "Natural language processing susbsystems disabled.")
 
 @module.commands('nlp_status')
