@@ -28,25 +28,25 @@ Base = declarative_base()
 
 class Lathers(Base):
     __tablename__ = 'lathers'
-    channel = Column(String, primary_key=True, autoincrement=False)
+    channel = Column(String, autoincrement=False)
     count = Column(Integer)
     name = Column(String)
 
 class Lures(Base):
     __tablename__ = 'lures'
-    channel = Column(String, primary_key=True, autoincrement=False)
+    channel = Column(String, autoincrement=False)
     count = Column(Integer)
     name = Column(String)
 
 class Baits(Base):
     __tablename__ = 'baits'
-    channel = Column(String, primary_key=True, autoincrement=False)
+    channel = Column(String, autoincrement=False)
     count = Column(Integer)
     name = Column(String)
 
 class Words(Base):
     __tablename__ = 'words'
-    channel = Column(String, primary_key=True, autoincrement=False)
+    channel = Column(String, autoincrement=False)
     count = Column(Integer)
     name = Column(String)
 
