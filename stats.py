@@ -185,13 +185,16 @@ def words_stats(bot, trigger):
     word_count = len(str(line).split(" "))
 
     if re.match(r'\#', trigger.sender):
-        if channel not in bot.memory['word_counts']:
-            bot.memory['word_counts'][channel] = {}
-        if nickname not in bot.memory['word_counts'][channel]: # or bot.memory['word_counts'][channel].get(nickname, None) == 0:
-            bot.memory['word_counts'][channel][nickname] = word_count
-        else:
-            bot.memory['word_counts'][channel][nickname] += word_count
-            #print(bot.memory['word_counts'])
+        try:
+            if channel not in bot.memory['word_counts']:
+                bot.memory['word_counts'][channel] = {}
+            if nickname not in bot.memory['word_counts'][channel]: # or bot.memory['word_counts'][channel].get(nickname, None) == 0:
+                bot.memory['word_counts'][channel][nickname] = word_count
+            else:
+                bot.memory['word_counts'][channel][nickname] += word_count
+                #print(bot.memory['word_counts'])
+        except KeyError:
+            bot.say("Well something just went terribly wrong...")
     else:
         print("Private message it seems...")
 
