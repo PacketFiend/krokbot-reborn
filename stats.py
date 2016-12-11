@@ -52,7 +52,7 @@ class Words(Base):
 
 def start_db():
     #engine = create_engine('sqlite:///' + config.stats_db, connect_args={'check_same_thread': False}, pool_recycle = 14400)
-    engine = create_engine('sqlite:////home/mike/.sopel/modules/stats.db', connect_args={'check_same_thread': False}, pool_recycle = 14400)
+    engine = create_engine("mysql+pymysql://krok:kr0kl4bs@asgard.pure-defect.com/krokbot?host=asgard.pure-defect.com?port=3306", pool_recycle = 14400)
     Session = sessionmaker()
     Session.configure(bind=engine)
     session = Session()
@@ -206,8 +206,7 @@ def words_stats(bot, trigger):
 '''
 Dump bot.memory['word_counts'] into a database table
 '''
-#@module.interval(900)
-@module.interval(60)
+@module.interval(900)
 def dump_word_stats(bot):
     session = start_db()
     table = Words
