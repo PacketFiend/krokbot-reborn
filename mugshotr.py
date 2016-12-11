@@ -53,7 +53,7 @@ def get_arrests():
 
 def start_db():
     #engine = create_engine('sqlite:///mugshots.db')
-    engine = create_engine('sqlite:///' + config.mugshots_db, connect_args={'check_same_thread': False})
+    engine = create_engine('sqlite:///' + config.mugshots_db, connect_args={'check_same_thread': False}, pool_recycle = 14400)
     Session = sessionmaker()
     Session.configure(bind=engine)
     session = Session()
