@@ -52,8 +52,7 @@ def get_arrests():
     return found
 
 def start_db():
-    #engine = create_engine('sqlite:///mugshots.db')
-    engine = create_engine('sqlite:///' + config.mugshots_db, connect_args={'check_same_thread': False}, pool_recycle = 14400)
+    engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306", pool_recycle = 14400)
     Session = sessionmaker()
     Session.configure(bind=engine)
     session = Session()

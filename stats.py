@@ -28,25 +28,25 @@ Base = declarative_base()
 
 class Lathers(Base):
     __tablename__ = 'lathers'
-    channel = Column(String, primary_key=True, autoincrement=False)
+    channel = Column(String, autoincrement=False)
     count = Column(Integer)
     name = Column(String)
 
 class Lures(Base):
     __tablename__ = 'lures'
-    channel = Column(String, primary_key=True, autoincrement=False)
+    channel = Column(String, autoincrement=False)
     count = Column(Integer)
     name = Column(String)
 
 class Baits(Base):
     __tablename__ = 'baits'
-    channel = Column(String, primary_key=True, autoincrement=False)
+    channel = Column(String, autoincrement=False)
     count = Column(Integer)
     name = Column(String)
 
 class Words(Base):
     __tablename__ = 'words'
-    channel = Column(String, primary_key=True, autoincrement=False)
+    channel = Column(String, autoincrement=False)
     count = Column(Integer)
     name = Column(String)
 
@@ -78,7 +78,7 @@ count of 1.
 @module.rule(r'\blathers\b|\blures\b|\bbaits\b (\w+)')
 @module.rate(20)
 def insert_top_action(bot, trigger):
-    if trigger.match:
+    if trigger.match and 'sopel' not in trigger.nick:
         nickname = trigger.nick
         channel = trigger.args[0]
         channel = channel.encode('ascii')
@@ -188,11 +188,12 @@ def words_stats(bot, trigger):
         try:
             if channel not in bot.memory['word_counts']:
                 bot.memory['word_counts'][channel] = {}
-            if nickname not in bot.memory['word_counts'][channel]: # or bot.memory['word_counts'][channel].get(nickname, None) == 0:
-                bot.memory['word_counts'][channel][nickname] = word_count
-            else:
-                bot.memory['word_counts'][channel][nickname] += word_count
-                #print(bot.memory['word_counts'])
+            if 'sopel' not in trigger.user:
+                if nickname not in bot.memory['word_counts'][channel]: # or bot.memory['word_counts'][channel].get(nickname, None) == 0:
+                    bot.memory['word_counts'][channel][nickname] = word_count
+                else:
+                    bot.memory['word_counts'][channel][nickname] += word_count
+                    #print(bot.memory['word_counts'])
         except KeyError:
             bot.say("Well something just went terribly wrong...")
     else:
