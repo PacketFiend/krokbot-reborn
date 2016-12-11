@@ -28,18 +28,21 @@ Base = declarative_base()
 
 class Lathers(Base):
     __tablename__ = 'lathers'
-    name = Column(String, primary_key=True, autoincrement=False)
+    channel = Column(String, primary_key=True, autoincrement=False)
     count = Column(Integer)
+    name = Column(String)
 
 class Lures(Base):
     __tablename__ = 'lures'
-    name = Column(String, primary_key=True, autoincrement=False)
+    channel = Column(String, primary_key=True, autoincrement=False)
     count = Column(Integer)
+    name = Column(String)
 
 class Baits(Base):
     __tablename__ = 'baits'
-    name = Column(String, primary_key=True, autoincrement=False)
+    channel = Column(String, primary_key=True, autoincrement=False)
     count = Column(Integer)
+    name = Column(String)
 
 class Words(Base):
     __tablename__ = 'words'
@@ -48,7 +51,8 @@ class Words(Base):
     name = Column(String)
 
 def start_db():
-    engine = create_engine('sqlite:///' + config.stats_db, connect_args={'check_same_thread': False}, pool_recycle = 14400)
+    #engine = create_engine('sqlite:///' + config.stats_db, connect_args={'check_same_thread': False}, pool_recycle = 14400)
+    engine = create_engine('sqlite:////home/mike/.sopel/modules/stats.db', connect_args={'check_same_thread': False}, pool_recycle = 14400)
     Session = sessionmaker()
     Session.configure(bind=engine)
     session = Session()
@@ -64,7 +68,6 @@ def setup(bot):
         channel = channel.encode('ascii')
         bot.memory['word_counts'] = {}
         bot.memory['word_counts'][channel] = {}
-        print(bot.memory['word_counts'][channel])
 
 '''
 Insert top lather stats; Start by matching on ACTION lathers; if match found
@@ -77,7 +80,10 @@ count of 1.
 def insert_top_action(bot, trigger):
     if trigger.match:
         nickname = trigger.nick
+        channel = trigger.args[0]
+        channel = channel.encode('ascii')
         actions = []
+
         if 'lather' in trigger.group(0):
             table = Lathers
             actions.append(table)
@@ -87,35 +93,33 @@ def insert_top_action(bot, trigger):
         if 'bait' in trigger.group(0):
             table = Baits
             actions.append(table)
-        #count = session.query(Lathers).filter_by(name=nickname).first()
-
-        channel = trigger.args[0]
-        channel = channel.encode('ascii')
 
         for table in actions:
             session = start_db()
-            rs = session.query(exists().where(table.name == nickname)).scalar()
+            rs = session.query(exists().where((table.channel == channel) & (table.name == nickname))).scalar()
+
             if rs is True:
                 try:
-                    session.query(table).filter_by(name=nickname).update({'count': table.count + 1})
+                    session.query(table).filter_by(channel=channel).filter_by(name=nickname).update({'count': table.count + 1})
                     session.commit()
                 except NameError:
                     print("{} not found in the table.".format(nickname))
                 except:
-                    print("Could not increment user's {} count in the table.").format(table)
+                    print("Could not increment user's {} count in the table.".format(table))
                 finally:
                     session.close()
             elif rs is False:
                 print("Adding new nickname to the {} stats table : {}".format(table, nickname))
                 try:
-                    rs = table(name=nickname, count=1)
+                    rs = table(channel=channel, name=nickname, count=1)
                     session.add(rs)
                     session.commit()
                 except:
+                    table = 'words'
                     print("Failed adding {} to the {} stats table".format(nickname, table))
                 finally:
                     print("What you talkin' about chamo?")
-                    session.close()
+                session.close()
 
 '''
 Get top stats for lather, lure, and bait. We start off with defining 3 commands.
@@ -143,7 +147,7 @@ def get_top_stats(bot, trigger):
         table = Words
 
     session = start_db()
-    top_stats = {nickname.name: nickname.count for nickname in session.query(table).filter_by(channel=channel)}
+    top_stats = {nickname.name: nickname.count for nickname in session.query(table.name, table.count).filter_by(channel=channel)}
 
     session.close()
 
@@ -187,7 +191,7 @@ def words_stats(bot, trigger):
             bot.memory['word_counts'][channel][nickname] = word_count
         else:
             bot.memory['word_counts'][channel][nickname] += word_count
-            print(bot.memory['word_counts'])
+            #print(bot.memory['word_counts'])
     else:
         print("Private message it seems...")
 
@@ -206,10 +210,7 @@ def dump_word_stats(bot):
     table = Words
 
     for channel in bot.memory['word_counts'].keys():
-        print(channel)
         for nickname, word_count in bot.memory['word_counts'][channel].items():
-            print(nickname, word_count)
-        #word_count = bot.memory['word_counts'][channel][nickname]
             rs = session.query(exists().where((table.channel == channel) & (table.name == nickname))).scalar()
 
             if rs is True:
