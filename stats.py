@@ -19,7 +19,6 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 import config
 import re
-from pprint import pprint
 
 '''
 Setup database ORM stuff. Database location is fed in via config module.
@@ -191,7 +190,6 @@ def words_stats(bot, trigger):
 
     if re.match(r'\#', trigger.sender):
         try:
-            pprint(bot.memory)
             if channel not in bot.memory['word_counts']:
                 bot.memory['word_counts'][channel] = {}
             if 'sopel' not in trigger.user:
