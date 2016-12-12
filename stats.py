@@ -52,7 +52,7 @@ class Words(Base):
 
 def start_db():
     #engine = create_engine('sqlite:///' + config.stats_db, connect_args={'check_same_thread': False}, pool_recycle = 14400)
-    engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306", pool_recycle = 14400)
+    engine = create_engine(config.sql_connection_string, pool_recycle = 14400)
     Session = sessionmaker()
     Session.configure(bind=engine)
     session = Session()
@@ -152,7 +152,7 @@ def get_top_stats(bot, trigger):
     session.close()
 
     stats = {k.encode('ascii'): v for k, v in top_stats.items()}
-    bot.reply(reply + ": " + str(stats))
+    bot.msg(channel, reply + ": " + str(stats))
 
 '''
 !words command that tracks channel's top talkers with word counts for a given timespan.
@@ -177,7 +177,7 @@ nickname, count
 def words_stats(bot, trigger):
     nickname = trigger.user
     nickname = nickname.encode('ascii')
-    channel = trigger.args[0]
+    channel = trigger.sender
     channel = channel.encode('ascii')
     line = trigger.args[1:]
     line =  map(str, line)
@@ -208,7 +208,9 @@ def words_stats(bot, trigger):
 Dump bot.memory['word_counts'] into a database table
 '''
 @module.interval(900)
-def dump_word_stats(bot):
+@module.require_admin
+@module.commands('stats_dump_words')
+def dump_word_stats(bot, trigger=None):
     session = start_db()
     table = Words
 
