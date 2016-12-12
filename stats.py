@@ -9,7 +9,6 @@
 
 from __future__ import print_function
 from sopel import module, tools
-#import sqlite3
 import random
 import time
 from random import randint
@@ -64,7 +63,12 @@ def start_db():
 Define some memory dicts/lists for keeping track of users and their word counts.
 '''
 def setup(bot):
-    for channel in bot.privileges:
+
+    session = start_db()
+    results = session.query(Words, Words.channel)
+    session.close()
+    for result in results:
+        channel = result[1]
         channel = channel.encode('ascii')
         bot.memory['word_counts'] = {}
         bot.memory['word_counts'][channel] = {}
@@ -80,7 +84,7 @@ count of 1.
 def insert_top_action(bot, trigger):
     if trigger.match and 'sopel' not in trigger.nick:
         nickname = trigger.nick
-        channel = trigger.args[0]
+        channel = trigger.sender
         channel = channel.encode('ascii')
         actions = []
 
@@ -130,7 +134,7 @@ database table we'll be querying.
 @module.rate(20)
 @module.commands('toplather', 'toplure', 'topbait', 'words')
 def get_top_stats(bot, trigger):
-    channel = trigger.args[0]
+    channel = trigger.sender
     channel = channel.encode('ascii')
 
     if 'lather' in trigger.group(1):
