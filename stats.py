@@ -9,7 +9,6 @@
 
 from __future__ import print_function
 from sopel import module, tools
-#import sqlite3
 import random
 import time
 from random import randint
