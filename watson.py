@@ -25,7 +25,7 @@ watson_kroksubjects = Table('watson_kroksubjects', metadata, autoload=True, auto
 watson_krokemotions = Table('watson_krokemotions', metadata, autoload=True, autoload_with=engine)
 
 global debug
-debug = True
+debug = False
 
 class APIKeyClass:
     '''A class to contain a list of all API keys in use, and cycle through them when we
@@ -145,12 +145,13 @@ class TextAnalyzer:
         try:
             # This is the block that actually sends messages off to Alchemy for processing.
             if debug: print "In analyzeEmotion(): Analyzing emotion"
-            result = json.dumps(
-                    self.alchemy_language.combined(
+            json_dump = self.alchemy_language.combined(
                             text=trigger,
                             extract='doc-emotion',
-                            max_items=1)
-                    )
+                            max_items=1,
+                            language='english')
+            result = json.dumps(json_dump)
+            pprint(result)
                 # Make sure we keep track of how many API queries we've used
             APIKey.updateQueryCount()
             print result
@@ -163,9 +164,14 @@ class TextAnalyzer:
                                  +"Switching to next key :D (" + str(message))
                 self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
                 print "API Key is now: " + APIKey.name
+            else:
+                bot.msg(channel, "Unhandled Watson Exception: " + str(message))
                 return
+        except Exception, message:
+            print "Unhandled exception! " + message
 
-        json_data = json.loads(result)
+        if result:
+            json_data = json.loads(result)
 
         if float(json_data['docEmotions']['anger']) > self.threshold:
             emotions["anger"] = float(json_data['docEmotions']['anger'])
@@ -219,7 +225,8 @@ class TextAnalyzer:
             result = json.dumps(
                     self.alchemy_language.concepts(text=trigger,
                                                    show_source_text = 1,
-                                                   linked_data = 0)
+                                                   linked_data = 0,
+                                                   language='english')
                     )
             # Make sure we keep track of how many API queries we've used
             APIKey.updateQueryCount()
@@ -233,7 +240,7 @@ class TextAnalyzer:
                 print "API Key is now: " + APIKey.name
                 return
             else:
-                bot.msg(channel, "Unhandled Watson exception processing text :(")
+                bot.msg(channel, "Unhandled Watson Exception: " + message)
 
 	print result
         json_data = json.loads(result)
@@ -324,6 +331,10 @@ class KrokHandler:
         # or not any context was identified. Otherwise, one of the subclasses
         # must return some context before the krok will be inserted.
 
+        if not self.nlp_master_enabled:
+            if debug: print "In record_krok(): early return, nlp_master_enabled is False"
+            return
+
         try:
             query = select([watson_krok.c.text]).where(watson_krok.c.text == trigger)
             result = self.conn.execute(query)
@@ -342,11 +353,11 @@ class KrokHandler:
                 if debug: print "Analyzed subjects"; print concepts
 
             # Record the krok, if there's any context identified, or we forced it
-            if self.nlp_emotion_enabled or self.nlp_subject_enabled or force:
+            if concepts or emotions or force:
                 query = watson_krok.insert().values(text = trigger).prefix_with("IGNORE")
                 result = self.conn.execute(query)
             else:
-                if debug: print "In record_krok(): early return"
+                if debug: print "In record_krok(): early return - no context identified."
                 return False
 
             # Now, if we identified any context, enter that into the DB as well
@@ -471,7 +482,7 @@ def getNlpStatus(bot, trigger):
 @module.commands('nlp_current_key')
 def showKeyInfo(bot, trigger):
     '''Shows the key currently in use via PRIVMSG to the requester. Requires admin access.'''
-    if TextAnalyzer.master_nlp_enabled:
+    if krok_handler.nlp_master_enabled:
         keyInfo = APIKey.getCurrentKey()
         bot.msg(trigger.nick, "Current API key: " + keyInfo['key'])
         bot.msg(trigger.nick, "Current query count: " + str(keyInfo['queries']))
@@ -479,3 +490,15 @@ def showKeyInfo(bot, trigger):
         bot.msg(trigger.nick, "Thank you, " + trigger.nick + ", and have an awesome day!")
     else:
         bot.msg(trigger.sender, "Enable the NLP subsystem first, fuckwad.")
+
+@module.require_admin
+@module.commands('nlp_debug')
+def nlp_debug(bot, trigger):
+    '''Toggles the state of the debug global.'''
+    global debug
+    if debug:
+        debug = False
+        bot.msg(trigger.sender, trigger.nick + ", debug flag is now off. Thanks!")
+    else:
+        debug = True
+        bot.msg(trigger.sender, trigger.nick + ", debug flag is now on. Go fuck a pig.")
