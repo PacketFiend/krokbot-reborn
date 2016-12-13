@@ -392,16 +392,19 @@ krok_handler = KrokHandler('krokHandler')
 @module.rule('^(?!krokbot|krokwhore|krokpot|kdev)^[^\.!].*')
 def analyzeText(bot, trigger):
     '''Passes messages to the TextAnalyzer class for analysis by the Big Blue'''
+    global debug
     channel = trigger.sender
-    # Ignore this rule if it's not rockho
-    #if "ct.charter.com" not in trigger.hostmask:
-    #    return
 
+    # Ignore this rule if it's not rockho
+    if not debug:
+        if "ct.charter.com" not in trigger.hostmask:
+            return
     try:
         krok_handler.record_krok(bot, trigger)
     except Exception, message:
         bot.msg(channel, "Unhandled exception in record_krok(): " + str(message) \
                          +"; NLP subsystem disabled.")
+
 
 @module.commands('nlp_emotion_threshold')
 def setEmotionThreshold(bot, trigger):
