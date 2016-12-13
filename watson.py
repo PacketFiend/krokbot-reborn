@@ -17,6 +17,8 @@ from sqlalchemy import (create_engine, Table, Column, Text, Integer,
 from sqlalchemy.sql import (select, exists, update, insert)
 from sqlalchemy.exc import OperationalError
 
+import traceback
+
 engine = create_engine(config.sql_connection_string, pool_recycle = 14400)
 metadata = MetaData()
 watson_apikeys = Table('watson_apikeys', metadata, autoload=True, autoload_with=engine)
@@ -191,7 +193,7 @@ class TextAnalyzer:
 
 
         if self.emotionDetected == True:
-            pprint("About to return... " + str(emotions))
+            if debug: pprint("About to return... " + str(emotions))
             return emotions
         else:
             return False
@@ -257,7 +259,6 @@ class DataHandler:
     master_nlp_enabled = False
 
     def __init__(self, name):
-        self.conn = engine.connect()
         self.name = name
         self.nlp_enabled = False
 
@@ -266,8 +267,9 @@ class DataHandler:
 
         # Pull the key ID for the krok we just inserted.
         # (Can a ResultProxy object give us this info?)
+        conn = engine.connect()
         query = select([watson_krok.c.krokid]).where(watson_krok.c.text == trigger)
-        result = self.conn.execute(query)
+        result = conn.execute(query)
         if result.rowcount != 0:
             krokID = result.first()[0]
 
@@ -279,7 +281,7 @@ class DataHandler:
                                                      subject = subject,
                                                      relevance = datum['relevance'])
                 try:
-                    result = self.conn.execute(query)
+                    result = conn.execute(query)
                 except Exception, message:
                     print "Exception in recordSubjects() writing " + subject \
                         + " to database for krok " + trigger + ": " + message
@@ -293,8 +295,9 @@ class DataHandler:
 
         # Pull the key ID for the krok we just inserted.
         # (Can a ResultProxy object give us this info?)
+        conn = engine.connect()
         query = select([watson_krok.c.krokid]).where(watson_krok.c.text == trigger)
-        result = self.conn.execute(query)
+        result = conn.execute(query)
         if result.rowcount != 0:
             krokID = result.first()[0]
 
@@ -305,7 +308,7 @@ class DataHandler:
                 query = watson_krokemotions.insert().values(krokid = krokID,
                                                      emotion = emotion,
                                                      confidence = confidence)
-                result = self.conn.execute(query)
+                result = conn.execute(query)
             return True
         else:
             return False
@@ -323,7 +326,6 @@ class KrokHandler:
         self.emotionHandler = DataHandler('emotionHandler')
         self.subjectAnalyzer = TextAnalyzer('subjectAnalyzer')
         self.subjectHandler = DataHandler('subjectHandler')
-        self.conn = engine.connect()
     
     def record_krok(self, bot, trigger, force=False):
         '''Inserts krok in the database, first checking that it's unique'''
@@ -335,9 +337,11 @@ class KrokHandler:
             if debug: print "In record_krok(): early return, nlp_master_enabled is False"
             return
 
+        channel = trigger.sender
         try:
+            conn = engine.connect()
             query = select([watson_krok.c.text]).where(watson_krok.c.text == trigger)
-            result = self.conn.execute(query)
+            result = conn.execute(query)
             
             # Is this krok already present in the database? If so, exit now.
             if result.rowcount != 0:
@@ -355,7 +359,7 @@ class KrokHandler:
             # Record the krok, if there's any context identified, or we forced it
             if concepts or emotions or force:
                 query = watson_krok.insert().values(text = trigger).prefix_with("IGNORE")
-                result = self.conn.execute(query)
+                result = conn.execute(query)
             else:
                 if debug: print "In record_krok(): early return - no context identified."
                 return False
@@ -373,7 +377,13 @@ class KrokHandler:
             if "has gone away" in message:
                 print "MariaDB server has gone away: " + str(message)
             else:
-                print "Unhandled OperationalError in recordKrok() writing to database!"
+                print "Unhandled OperationalError in recordKrok() writing to database: "\
+                      + message
+        # Disable the NLP subsystem if we catch any other exception, to prevent flooding
+        except Exception, message:
+            self.nlp_master_enabled = False
+            traceback.print_exc()
+            raise
 
 krok_handler = KrokHandler('krokHandler')
 
@@ -386,7 +396,10 @@ def analyzeText(bot, trigger):
     #if "ct.charter.com" not in trigger.hostmask:
     #    return
 
-    krok_handler.record_krok(bot, trigger)
+    try:
+        krok_handler.record_krok(bot, trigger)
+    except Exception, message:
+        bot.msg(channel, "Unhandled exception in record_krok() - NLP subsystem disabled.")
 
 @module.commands('nlp_emotion_threshold')
 def setEmotionThreshold(bot, trigger):
