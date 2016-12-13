@@ -170,7 +170,7 @@ class TextAnalyzer:
                 bot.msg(channel, "Unhandled Watson Exception: " + str(message))
                 return
         except Exception, message:
-            print "Unhandled exception! " + message
+            print "Unhandled exception! " + str(message)
 
         if result:
             json_data = json.loads(result)
@@ -242,7 +242,7 @@ class TextAnalyzer:
                 print "API Key is now: " + APIKey.name
                 return
             else:
-                bot.msg(channel, "Unhandled Watson Exception: " + message)
+                bot.msg(channel, "Unhandled Watson Exception: " + str(message))
 
 	print result
         json_data = json.loads(result)
@@ -284,7 +284,7 @@ class DataHandler:
                     result = conn.execute(query)
                 except Exception, message:
                     print "Exception in recordSubjects() writing " + subject \
-                        + " to database for krok " + trigger + ": " + message
+                        + " to database for krok " + trigger + ": " + str(message)
                     return False
             return True
         else:
@@ -378,7 +378,7 @@ class KrokHandler:
                 print "MariaDB server has gone away: " + str(message)
             else:
                 print "Unhandled OperationalError in recordKrok() writing to database: "\
-                      + message
+                      + str(message)
         # Disable the NLP subsystem if we catch any other exception, to prevent flooding
         except Exception, message:
             self.nlp_master_enabled = False
@@ -392,6 +392,7 @@ krok_handler = KrokHandler('krokHandler')
 @module.rule('^(?!krokbot|krokwhore|krokpot|kdev)^[^\.!].*')
 def analyzeText(bot, trigger):
     '''Passes messages to the TextAnalyzer class for analysis by the Big Blue'''
+    channel = trigger.sender
     # Ignore this rule if it's not rockho
     #if "ct.charter.com" not in trigger.hostmask:
     #    return
@@ -399,7 +400,8 @@ def analyzeText(bot, trigger):
     try:
         krok_handler.record_krok(bot, trigger)
     except Exception, message:
-        bot.msg(channel, "Unhandled exception in record_krok() - NLP subsystem disabled.")
+        bot.msg(channel, "Unhandled exception in record_krok(): " + str(message) \
+                         +"; NLP subsystem disabled.")
 
 @module.commands('nlp_emotion_threshold')
 def setEmotionThreshold(bot, trigger):
