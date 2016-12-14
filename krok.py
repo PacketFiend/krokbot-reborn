@@ -181,7 +181,7 @@ def talk_shit(bot, trigger):
 
 	ret_quote = clean_quote
 	#full = trigger.nick + ": " + ret_quote
-	bot.say(full)
+	bot.say(ret_quote)
 
 # deeplove - target another nick with insults
 @module.rate(20) # we may need to adjust this, but we dont need people spamming the command
