@@ -6,6 +6,7 @@
 # Summary: krokbot: evil AI
 #
 
+import config
 from sopel import module, tools
 import sqlite3
 import pymysql
@@ -29,14 +30,15 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 metadata = MetaData()
 
-engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306", pool_recycle = 14400)
+#engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
+engine = create_engine(config.sql_connection_string)
 
 bestkrok = Table('bestkrok', metadata, autoload=True, autoload_with=engine)
 
-api = twitter.Api(consumer_key=creds.tw_consumer_key,
-	consumer_secret=creds.tw_consumer_secret,
-	access_token_key=creds.tw_access_token_key,
-	access_token_secret=creds.tw_access_token_secret)
+api = twitter.Api(consumer_key=config.tw_consumer_key,
+	consumer_secret=config.tw_consumer_secret,
+	access_token_key=config.tw_access_token_key,
+	access_token_secret=config.tw_access_token_secret)
 
 geolocator = Nominatim()
 
@@ -178,7 +180,7 @@ def talk_shit(bot, trigger):
 			pass
 
 	ret_quote = clean_quote
-	full = trigger.nick + ": " + ret_quote
+	#full = trigger.nick + ": " + ret_quote
 	bot.say(full)
 
 # deeplove - target another nick with insults
