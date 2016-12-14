@@ -244,9 +244,9 @@ class TextAnalyzer:
             else:
                 bot.msg(channel, "Unhandled Watson Exception: " + str(message))
 
-	print result
+        print result
         json_data = json.loads(result)
-	concepts = json_data['concepts']
+        concepts = json_data['concepts']
         if json_data['concepts']:
             return concepts
         else:
@@ -316,6 +316,8 @@ class DataHandler:
 class KrokHandler:
     '''Handles the processing, analysis, and db insertion of krok.'''
 
+    global debug
+
     def __init__(self, name):
         concepts = []
         emotions = []
@@ -371,7 +373,7 @@ class KrokHandler:
                 if concepts:
                     self.subjectHandler.recordSubjects(trigger, concepts)
             except APIKey.exc.NoMoreKeysException:
-			    bot.msg(trigger.sender, "NoMoreKeysException: " + str(message))
+                bot.msg(trigger.sender, "NoMoreKeysException: " + str(message))
 
         except OperationalError, message:
             if "has gone away" in message:
@@ -382,6 +384,65 @@ class KrokHandler:
         # Disable the NLP subsystem if we catch any other exception, to prevent flooding
         except Exception, message:
             self.nlp_master_enabled = False
+            traceback.print_exc()
+            raise
+
+    def get_emotion(self, bot, krok="", krokID=0):
+        '''Returns emotional context for a message. Returns a dict with the krok, the
+        krokID, and every emotion found tagged to it, if any.'''
+
+        if not self.nlp_master_enabled or not self.nlp_emotion_enabled:
+            if debug: print "Early return from get_emotion: master or subsystem disabled"
+            return False
+
+        emotions = {}
+        emotions['krok'] = {}
+        emotions['emotions'] = {}
+        try:
+            conn = engine.connect()
+
+            # If a specific krok id was requested, jump right to that
+            if krokID > 0:
+                query = select([watson_krok.c.text]).where(watson_krok.c.krokid==str(krokID))
+                result = conn.execute(query)
+                if result.rowcount > 0:
+                    krok = result.first()[0]
+                else:
+                    if debug: print "No krok found for id " + krokID
+
+            # First, check if this krok is already in the local database.
+            elif len(krok):
+                query = select([watson_krok.c.krokid]).where(watson_krok.c.text == krok)
+                result = conn.execute(query)
+                if result.rowcount > 0:
+                    krokID = result.first()[0]
+                else:
+                    print krok + ": not in db"
+
+            # At this point, we should have both the krok and the krokID? Right?
+            if len(krok) and krokID:
+                emotions['krok']['krok'] = krok
+                emotions['krok']['krokID'] = krokID
+                query = select([watson_krokemotions.c.emotion,
+                                watson_krokemotions.c.confidence])\
+                                .where(watson_krokemotions.c.krokid==krokID)
+                results = conn.execute(query)
+
+                if results.rowcount > 0:
+                    pprint(results)
+                    for result in results:
+                        if debug: print result['emotion'] + ": " + str(result['confidence'])
+                        emotions['emotions'][result['emotion']] = result['confidence']
+                else:
+                    if debug: print "No emotions tagged to " + krok
+
+            else:
+                if debug: print "No matching krok in the database!"
+                # And return an empty dict.
+
+            return emotions
+        except Exception, message:
+            print "Exception in get_emotion: " + str(message)
             traceback.print_exc()
             raise
 
@@ -520,3 +581,38 @@ def nlp_debug(bot, trigger):
     else:
         debug = True
         bot.msg(trigger.sender, trigger.nick + ", debug flag is now on. Go fuck a pig.")
+
+@module.commands('nlp_get_emotion')
+def nlp_get_emotion(bot, trigger):
+    '''Returns emotional context from the database for a given message, by krok ID or by message'''
+
+    channel = trigger.sender
+    krokID = 0
+    message = ""
+    emotions = {}
+
+    try:
+        krokID = int(trigger.group(2))
+    except ValueError:
+        krok = str(trigger.group(2))
+
+    if krokID:
+        if debug: print "Trigger argument is " + str(krokID)
+        emotions = krok_handler.get_emotion(bot, krokID=krokID)
+    elif len(krok):
+        if debug: print "Trigger argument is " + str(krok)
+        emotions = krok_handler.get_emotion(bot, krok=krok)
+
+    if len(emotions['krok']):  # This dict will be empty if we found no krok
+		krok = emotions['krok']['krok']
+		krokID = emotions['krok']['krokID']
+		if len(emotions['emotions']):  # This dict will be empty if no emotions were tagged
+			bot.msg(channel, "Emotions tagged for \"" + krok + "\" (" + str(krokID) + "):")
+			for emotion, confidence in emotions['emotions'].items():
+				print emotion + ": " + str(confidence)
+				bot.msg(channel, emotion + ": " + str(confidence))
+		else:
+			bot.msg(channel, "No emotions tagged for \"" + krok + "\"")
+    else:
+        # this krok is not in the db
+        bot.msg(channel, "Sorry, \"" + trigger.group(2) + "\" does not appear in my database")
