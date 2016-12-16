@@ -127,11 +127,18 @@ class TextAnalyzer:
             return
         self.emotionDetected = False
         emotions = {}
-        channel = trigger.sender
+        try:
+            channel = trigger.sender
+        except AttributeError:
+            # We likely called this from the interpreter if we wind up here
+            pass
         channel = "#test1"
         print trigger
         if APIKey.queryCount >= 990:
-            bot.msg(channel, "Cycling to next API key!")
+            if bot is not None:
+                bot.msg(channel, "Cycling to next API key!")
+            else:
+                print "Cycling to next API key!"
             # If there's no more API keys we can use, disable the NLP subsystem and exit.
             # Otherwise, move to the next key.
             try:
@@ -162,13 +169,19 @@ class TextAnalyzer:
             # This really shouldn't happen if we set the max query count correctly.
             # This means this block is untestable :(
             if "daily-transaction-limit-exceeded" in str(message):
-                bot.msg(channel, "API daily transaction limit exceeded. "
-                                 +"Switching to next key :D (" + str(message))
+                if bot is not None:
+                    bot.msg(channel, "API daily transaction limit exceeded. "
+                                     +"Switching to next key :D (" + str(message))
+                else:
+                    print "API daily transaction limit exceeded. Switching to next key."
                 self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
                 print "API Key is now: " + APIKey.name
             else:
-                bot.msg(channel, "Unhandled Watson Exception: " + str(message))
-                return
+                if bot is not None:
+                    bot.msg(channel, "Unhandled Watson Exception: " + str(message))
+                    return
+                else:
+                    print "Unhandled Watson Exception: " + str(message)
         except Exception, message:
             print "Unhandled exception! " + str(message)
 
@@ -200,12 +213,16 @@ class TextAnalyzer:
 
     def analyzeSubject(self, bot, trigger):
         '''Runs messages through Watson's Alchemy API, attempting to identify
-        topical context.'''
+        topical context. Can also be used from the interpreter, if bot=None.'''
         if not krok_handler.nlp_master_enabled or not krok_handler.nlp_subject_enabled:
             if debug: print "TextAnalyzer.analyzeSubject(): early return!"
             return
         subjects = []
-        channel = trigger.sender
+        try:
+            channel = trigger.sender
+        except AttributeError:
+            # We likely called this from the interpreter if we wind up here
+            pass
         channel = "#test1"
         print trigger
         if APIKey.queryCount >= 990:
@@ -236,8 +253,11 @@ class TextAnalyzer:
             # This really shouldn't happen if we set the max query count correctly.
             # This means this block is untestable :(
             if "daily-transaction-limit-exceeded" in str(message):
-                bot.msg(channel, "API daily transaction limit exceeded. \
-                Switching to next key :D (" + str(message))
+                if bot is not None:
+                    bot.msg(channel, "API daily transaction limit exceeded. \
+                    Switching to next key :D (" + str(message))
+                else:
+                    print "API daily transaction limit exceeded. Switching to next key."
                 self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
                 print "API Key is now: " + APIKey.name
                 return
@@ -339,7 +359,6 @@ class KrokHandler:
             if debug: print "In record_krok(): early return, nlp_master_enabled is False"
             return
 
-        channel = trigger.sender
         try:
             conn = engine.connect()
             query = select([watson_krok.c.text]).where(watson_krok.c.text == trigger)
@@ -373,7 +392,7 @@ class KrokHandler:
                 if concepts:
                     self.subjectHandler.recordSubjects(trigger, concepts)
             except APIKey.exc.NoMoreKeysException:
-                bot.msg(trigger.sender, "NoMoreKeysException: " + str(message))
+                print "NoMoreKeysException: " + str(message)
 
         except OperationalError, message:
             if "has gone away" in message:
