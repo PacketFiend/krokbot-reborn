@@ -24,6 +24,8 @@ import kgen
 import creds
 import feedparser
 
+from pprint import pprint
+
 from sqlalchemy import (create_engine, Table, Column, Text, Integer, String, MetaData, ForeignKey, exc)
 from sqlalchemy.sql import (select, exists)
 from sqlalchemy.ext.declarative import declarative_base
@@ -32,8 +34,11 @@ metadata = MetaData()
 
 #engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
 engine = create_engine(config.sql_connection_string)
+Session = sessionmaker(bind=engine)
 
 bestkrok = Table('bestkrok', metadata, autoload=True, autoload_with=engine)
+watson_krok = Table('watson_krok', metadata, autoload=True, autoload_with=engine)
+watson_krokemotions = Table('watson_krokemotions', metadata, autoload=True, autoload_with=engine)
 
 api = twitter.Api(consumer_key=config.tw_consumer_key,
 	consumer_secret=config.tw_consumer_secret,
@@ -104,18 +109,35 @@ def gsearch(bot, trigger):
 @module.commands('shootout')
 def shootout(bot, trigger):
     """ usage: !shootout <num> (between 1 and 5) """
+    session = Session()
     imp = trigger.group(2)
-    shard = imp.split(" ")
+    conn = engine.connect()
 
-    if int(shard[0]) > 5:
-        bot.say(trigger.nick + ": quit being a chomo, chomo")	
+    if imp is not None:
+        shard = imp.split(" ")
+        if int(shard[0]) > 5:
+            bot.say(trigger.nick + ": quit being a chomo, chomo")   
+        else:
+            limit = int(shard[0])
     else:
-        limit = int(shard[0])
-	conn = engine.connect()
-	q = select([bestkrok.c.quote]).order_by('RAND()').limit(limit)
-	items = conn.execute(q)
-	for i in items:
-		bot.say(i[0])
+        limit = 1
+    if len(imp) > 1:
+        emotion = str(shard[1])
+        items = session.query(watson_krok).join(watson_krokemotions)\
+            .filter(watson_krokemotions.c.emotion == emotion)\
+            .order_by('RAND()')\
+            .limit(limit)
+    else:
+        items = session.query(watson_krok).join(watson_krokemotions)\
+            .order_by('RAND()')\
+            .limit(limit)
+        
+    #q = select([bestkrok.c.quote]).order_by('RAND()').limit(limit)
+    pprint(items)
+    #items = conn.execute(q)
+    for i in items:
+        pprint(i[1])
+        bot.say(i[1])
 
 # this gets a random quote from the database
 @module.commands('krokquote')
