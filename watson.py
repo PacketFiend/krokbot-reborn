@@ -11,6 +11,7 @@ from sopel import module, tools
 import json
 from watson_developer_cloud import AlchemyLanguageV1, WatsonException
 from pprint import pprint
+from datetime import datetime
 
 from sqlalchemy import (create_engine, Table, Column, Text, Integer, 
                         String, MetaData, ForeignKey, exc)
@@ -110,11 +111,14 @@ class TextAnalyzer:
     comments about what we think the state of the commenter is.'''
 
     master_nlp_enabled = False
+    emotionList = ["joy", "anger", "sadness", "fear", "disgust"]
 
     def __init__(self, name):
         '''Opens a dialogue with Watson and sets up sane defaults. Also sets up our API
         keys by calling instantiating am APIKey object'''
-        self.threshold = config.watson_emotion_detection_threshold
+        self.threshold = {}
+        for emotion in TextAnalyzer.emotionList:
+            self.threshold[emotion] = config.watson_emotion_detection_threshold
         self.emotionDetected = False
         self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.name)
 
@@ -188,22 +192,10 @@ class TextAnalyzer:
         if result:
             json_data = json.loads(result)
 
-        if float(json_data['docEmotions']['anger']) > self.threshold:
-            emotions["anger"] = float(json_data['docEmotions']['anger'])
-            self.emotionDetected = True
-        if float(json_data['docEmotions']['joy']) > self.threshold:
-            emotions["joy"] = float(json_data['docEmotions']['joy'])
-            self.emotionDetected = True
-        if float(json_data['docEmotions']['fear']) > self.threshold:
-            emotions["fear"] = float(json_data['docEmotions']['fear'])
-            self.emotionDetected = True
-        if float(json_data['docEmotions']['sadness']) > self.threshold:
-            emotions["sadness"] = float(json_data['docEmotions']['sadness'])
-            self.emotionDetected = True
-        if float(json_data['docEmotions']['disgust']) > self.threshold:
-            emotions["disgust"] = float(json_data['docEmotions']['disgust'])
-            self.emotionDetected = True
-
+        for emotion in TextAnalyzer.emotionList:
+            if float(json_data['docEmotions']['emotion']) > self.threshold['emotion']:
+                emotions["emotion"] = float(json_data['docEmotions']['emotion'])
+                self.emotionDetected = True
 
         if self.emotionDetected == True:
             if debug: pprint("About to return... " + str(emotions))
@@ -337,6 +329,7 @@ class KrokHandler:
     '''Handles the processing, analysis, and db insertion of krok.'''
 
     global debug
+    emotionList = TextAnalyzer.emotionList # Expose the list of emotions through this class
 
     def __init__(self, name):
         concepts = []
@@ -348,8 +341,12 @@ class KrokHandler:
         self.emotionHandler = DataHandler('emotionHandler')
         self.subjectAnalyzer = TextAnalyzer('subjectAnalyzer')
         self.subjectHandler = DataHandler('subjectHandler')
+
+    class exc:
+        class UnknownEmotionError(Exception):
+            pass
     
-    def record_krok(self, bot, trigger, force=False):
+    def record_krok(self, bot, trigger, force=False, record_date=True):
         '''Inserts krok in the database, first checking that it's unique'''
         # If force is true, this function will insert the krok regardless of whether
         # or not any context was identified. Otherwise, one of the subclasses
@@ -379,7 +376,11 @@ class KrokHandler:
 
             # Record the krok, if there's any context identified, or we forced it
             if concepts or emotions or force:
-                query = watson_krok.insert().values(text = trigger).prefix_with("IGNORE")
+                if record_date:
+                    query = watson_krok.insert().values(text = trigger,
+                                    date = datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                else:
+                    query = watson_krok.insert().values(text = trigger)
                 result = conn.execute(query)
             else:
                 if debug: print "In record_krok(): early return - no context identified."
@@ -459,11 +460,33 @@ class KrokHandler:
                 if debug: print "No matching krok in the database!"
                 # And return an empty dict.
 
+            if debug: pprint(emotions)
             return emotions
         except Exception, message:
             print "Exception in get_emotion: " + str(message)
             traceback.print_exc()
             raise
+
+    def set_emotion_threshold(self, threshold=None, emotion=None):
+        '''Sets a new threshold for the detection of emotion'''
+
+        if not self.nlp_master_enabled or not self.nlp_emotion_enabled:
+            if debug: print "Early return from set_emotion_threshold(): master or subsystem disabled."
+            return False
+        elif threshold is None:
+            if debug: print "Early return from set_emotion_threshold(): no threshold given."
+            return False
+        if emotion is not None:
+            if emotion not in TextAnalyzer.emotionList:
+                if debug: print "Unknown emotion specified for set_emotion_threshold."
+                raise KrokHandler.exc.UnknownEmotionError
+                return
+            if debug: print "Setting " + emotion + " threshold to " + str(threshold)
+            self.emotionAnalyzer.threshold[emotion] = float(threshold)
+        else:
+            for emotion in TextAnalyzer.emotionList:
+                if debug: print "Setting " + emotion + " threshold to " + str(threshold)
+                self.emotionAnalyzer.threshold[emotion] = float(threshold)
 
 krok_handler = KrokHandler('krokHandler')
 
@@ -491,24 +514,35 @@ def setEmotionThreshold(bot, trigger):
     '''Sets a new threshold for emotion detection, or shows current threshold if no
 argument is given. Defaults to 0.6. Must be 0 <= threshold <= 1 Usage: !nlp_emotion_threshold [0 <= <new value> <= 1]'''
     if krok_handler.nlp_master_enabled:
+        channel = trigger.sender
         if trigger.group(2):
             args = trigger.group(2).split()
-            newThreshold = float(args[0])
-            if not 0 <= newThreshold <= 1:
-                bot.msg(trigger.sender, "The new value must be between 0 and 1 "
-                    +" inclusive. RTFM, mothafucka!")
-                return
+
+            if len(args) > 0:
+                newThreshold = float(args[0])
+                if not 0 <= newThreshold <= 1:
+                    bot.msg(channel, "The new value must be between 0 and 1 "\
+                        +"inclusive. RTFM, mothafucka!")
+                    return
+            if len(args) > 1:
+                emotion = args[1]
             else:
-                krok_handler.emotionAnalyzer.threshold = float(trigger.group(2))
-                bot.msg(trigger.sender, trigger.nick 
+                emotion = None
+
+            try:
+                krok_handler.set_emotion_threshold(newThreshold, emotion)
+                bot.msg(channel, trigger.nick 
                     + ", new emotion detection threshold is "
                     + str(krok_handler.emotionAnalyzer.threshold))
+            except KrokHandler.exc.UnknownEmotionError:
+                bot.msg(channel, "Don't be a chomo. I don't recognize that emotion.")
+                bot.msg(channel, "Valid emotions are: " + ", ".join(TextAnalyzer.emotionList))
         else:
-            bot.msg(trigger.sender, trigger.nick 
+            bot.msg(channel, trigger.nick 
                 + ", current emotion detection threshold is "
                 + str(krok_handler.emotionAnalyzer.threshold))
     else:
-        bot.msg(trigger.sender, "Enable the NLP subsystem first, fuckwad.")
+        bot.msg(channel, "Enable the NLP subsystem first, fuckwad.")
 
 @module.require_admin
 @module.commands('nlp_enable')

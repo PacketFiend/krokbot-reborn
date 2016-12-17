@@ -32,6 +32,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 metadata = MetaData()
 
+from watson import KrokHandler
+
 #engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
 engine = create_engine(config.sql_connection_string)
 Session = sessionmaker(bind=engine)
@@ -123,6 +125,10 @@ def shootout(bot, trigger):
         limit = 1
     if len(imp) > 1:
         emotion = str(shard[1])
+        if emotion not in KrokHandler.emotionList:
+            bot.say("Don't be a chomo. I don't recognize that emotion. Valid emotions are: "\
+                    + ", ".join(KrokHandler.emotionList))
+            return
         items = session.query(watson_krok).join(watson_krokemotions)\
             .filter(watson_krokemotions.c.emotion == emotion)\
             .order_by('RAND()')\
