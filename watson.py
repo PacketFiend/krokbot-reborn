@@ -11,10 +11,13 @@ from sopel import module, tools
 import json
 from watson_developer_cloud import AlchemyLanguageV1, WatsonException
 from pprint import pprint
+from datetime import datetime
 
+import sqlalchemy
 from sqlalchemy import (create_engine, Table, Column, Text, Integer, 
                         String, MetaData, ForeignKey, exc)
 from sqlalchemy.sql import (select, exists, update, insert)
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError
 
 import traceback
@@ -25,6 +28,7 @@ watson_apikeys = Table('watson_apikeys', metadata, autoload=True, autoload_with=
 watson_krok = Table('watson_krok', metadata, autoload=True, autoload_with=engine)
 watson_kroksubjects = Table('watson_kroksubjects', metadata, autoload=True, autoload_with=engine)
 watson_krokemotions = Table('watson_krokemotions', metadata, autoload=True, autoload_with=engine)
+Session = sessionmaker(bind=engine)
 
 global debug
 debug = False
@@ -110,11 +114,14 @@ class TextAnalyzer:
     comments about what we think the state of the commenter is.'''
 
     master_nlp_enabled = False
+    emotionList = ["joy", "anger", "sadness", "fear", "disgust"]
 
     def __init__(self, name):
         '''Opens a dialogue with Watson and sets up sane defaults. Also sets up our API
         keys by calling instantiating am APIKey object'''
-        self.threshold = config.watson_emotion_detection_threshold
+        self.threshold = {}
+        for emotion in TextAnalyzer.emotionList:
+            self.threshold[emotion] = config.watson_emotion_detection_threshold
         self.emotionDetected = False
         self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.name)
 
@@ -188,22 +195,10 @@ class TextAnalyzer:
         if result:
             json_data = json.loads(result)
 
-        if float(json_data['docEmotions']['anger']) > self.threshold:
-            emotions["anger"] = float(json_data['docEmotions']['anger'])
-            self.emotionDetected = True
-        if float(json_data['docEmotions']['joy']) > self.threshold:
-            emotions["joy"] = float(json_data['docEmotions']['joy'])
-            self.emotionDetected = True
-        if float(json_data['docEmotions']['fear']) > self.threshold:
-            emotions["fear"] = float(json_data['docEmotions']['fear'])
-            self.emotionDetected = True
-        if float(json_data['docEmotions']['sadness']) > self.threshold:
-            emotions["sadness"] = float(json_data['docEmotions']['sadness'])
-            self.emotionDetected = True
-        if float(json_data['docEmotions']['disgust']) > self.threshold:
-            emotions["disgust"] = float(json_data['docEmotions']['disgust'])
-            self.emotionDetected = True
-
+        for emotion in TextAnalyzer.emotionList:
+            if float(json_data['docEmotions'][emotion]) > self.threshold[emotion]:
+                emotions[emotion] = float(json_data['docEmotions'][emotion])
+                self.emotionDetected = True
 
         if self.emotionDetected == True:
             if debug: pprint("About to return... " + str(emotions))
@@ -337,6 +332,7 @@ class KrokHandler:
     '''Handles the processing, analysis, and db insertion of krok.'''
 
     global debug
+    emotionList = TextAnalyzer.emotionList # Expose the list of emotions through this class
 
     def __init__(self, name):
         concepts = []
@@ -348,8 +344,12 @@ class KrokHandler:
         self.emotionHandler = DataHandler('emotionHandler')
         self.subjectAnalyzer = TextAnalyzer('subjectAnalyzer')
         self.subjectHandler = DataHandler('subjectHandler')
+
+    class exc:
+        class UnknownEmotionError(Exception):
+            pass
     
-    def record_krok(self, bot, trigger, force=False):
+    def record_krok(self, bot, trigger, force=False, record_date=True):
         '''Inserts krok in the database, first checking that it's unique'''
         # If force is true, this function will insert the krok regardless of whether
         # or not any context was identified. Otherwise, one of the subclasses
@@ -379,7 +379,11 @@ class KrokHandler:
 
             # Record the krok, if there's any context identified, or we forced it
             if concepts or emotions or force:
-                query = watson_krok.insert().values(text = trigger).prefix_with("IGNORE")
+                if record_date:
+                    query = watson_krok.insert().values(text = trigger,
+                                    date = datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                else:
+                    query = watson_krok.insert().values(text = trigger)
                 result = conn.execute(query)
             else:
                 if debug: print "In record_krok(): early return - no context identified."
@@ -415,8 +419,7 @@ class KrokHandler:
             return False
 
         emotions = {}
-        emotions['krok'] = {}
-        emotions['emotions'] = {}
+        session = Session()
         try:
             conn = engine.connect()
 
@@ -424,46 +427,84 @@ class KrokHandler:
             if krokID > 0:
                 query = select([watson_krok.c.text]).where(watson_krok.c.krokid==str(krokID))
                 result = conn.execute(query)
-                if result.rowcount > 0:
-                    krok = result.first()[0]
+                rowcount = session.query(sqlalchemy.func.count(watson_krok).filter(watson_krok.c.krokid==krokID))
+                if rowcount > 0:
+                    result = session.query(watson_krok).filter(watson_krok.c.krokid==krokID)
+                    row = result.first()
+                    krokID = row.krokid
+                    krok = row.text
+                    query = select([watson_krokemotions.c.emotion,\
+                                    watson_krokemotions.c.confidence])\
+                                    .where(watson_krokemotions.c.krokid==krokID)
+                    results = conn.execute(query)
+                    if results.rowcount > 0:
+                        emotions[krokID] = {}
+                        emotions[krokID]['krok'] = krok
+                        emotions[krokID]['emotions'] = {}
+                        for result in results:
+                            emotions[krokID]['emotions'][result['emotion']] = result['confidence']
+
+                    pprint(emotions)
+                    
                 else:
                     if debug: print "No krok found for id " + krokID
 
             # First, check if this krok is already in the local database.
             elif len(krok):
-                query = select([watson_krok.c.krokid]).where(watson_krok.c.text == krok)
-                result = conn.execute(query)
-                if result.rowcount > 0:
-                    krokID = result.first()[0]
+                rowcount = session.query(sqlalchemy.func.count(watson_krok).filter(watson_krok.c.text.op('regexp')(krok)))
+                result = session.query(watson_krok).filter(watson_krok.c.text.op('regexp')(krok))
+                if rowcount > 0:
+                    for row in result:
+                        krokID = row.krokid
+                        krok = row.text
+                        query = select([watson_krokemotions.c.emotion,\
+                                        watson_krokemotions.c.confidence])\
+                                        .where(watson_krokemotions.c.krokid==krokID)
+                        results = conn.execute(query)
+                        if results.rowcount > 0:
+                            emotions[krokID] = {}
+                            emotions[krokID]['krok'] = row.text
+                            emotions[krokID]['emotions'] = {}
+                            for result in results:
+                                if debug: print result['emotion'] + ": " + str(result['confidence'])
+                                emotions[krokID]['emotions'][result['emotion']] = result['confidence']
+                        else:
+                            if debug: print "No emotions tagged to " + krok                             
+
                 else:
                     print krok + ": not in db"
-
-            # At this point, we should have both the krok and the krokID? Right?
-            if len(krok) and krokID:
-                emotions['krok']['krok'] = krok
-                emotions['krok']['krokID'] = krokID
-                query = select([watson_krokemotions.c.emotion,
-                                watson_krokemotions.c.confidence])\
-                                .where(watson_krokemotions.c.krokid==krokID)
-                results = conn.execute(query)
-
-                if results.rowcount > 0:
-                    pprint(results)
-                    for result in results:
-                        if debug: print result['emotion'] + ": " + str(result['confidence'])
-                        emotions['emotions'][result['emotion']] = result['confidence']
-                else:
-                    if debug: print "No emotions tagged to " + krok
 
             else:
                 if debug: print "No matching krok in the database!"
                 # And return an empty dict.
 
+            if debug: pprint(emotions)
             return emotions
         except Exception, message:
             print "Exception in get_emotion: " + str(message)
             traceback.print_exc()
             raise
+
+    def set_emotion_threshold(self, threshold=None, emotion=None):
+        '''Sets a new threshold for the detection of emotion'''
+
+        if not self.nlp_master_enabled or not self.nlp_emotion_enabled:
+            if debug: print "Early return from set_emotion_threshold(): master or subsystem disabled."
+            return False
+        elif threshold is None:
+            if debug: print "Early return from set_emotion_threshold(): no threshold given."
+            return False
+        if emotion is not None:
+            if emotion not in TextAnalyzer.emotionList:
+                if debug: print "Unknown emotion specified for set_emotion_threshold."
+                raise KrokHandler.exc.UnknownEmotionError
+                return
+            if debug: print "Setting " + emotion + " threshold to " + str(threshold)
+            self.emotionAnalyzer.threshold[emotion] = float(threshold)
+        else:
+            for emotion in TextAnalyzer.emotionList:
+                if debug: print "Setting " + emotion + " threshold to " + str(threshold)
+                self.emotionAnalyzer.threshold[emotion] = float(threshold)
 
 krok_handler = KrokHandler('krokHandler')
 
@@ -491,24 +532,35 @@ def setEmotionThreshold(bot, trigger):
     '''Sets a new threshold for emotion detection, or shows current threshold if no
 argument is given. Defaults to 0.6. Must be 0 <= threshold <= 1 Usage: !nlp_emotion_threshold [0 <= <new value> <= 1]'''
     if krok_handler.nlp_master_enabled:
+        channel = trigger.sender
         if trigger.group(2):
             args = trigger.group(2).split()
-            newThreshold = float(args[0])
-            if not 0 <= newThreshold <= 1:
-                bot.msg(trigger.sender, "The new value must be between 0 and 1 "
-                    +" inclusive. RTFM, mothafucka!")
-                return
+
+            if len(args) > 0:
+                newThreshold = float(args[0])
+                if not 0 <= newThreshold <= 1:
+                    bot.msg(channel, "The new value must be between 0 and 1 "\
+                        +"inclusive. RTFM, mothafucka!")
+                    return
+            if len(args) > 1:
+                emotion = args[1]
             else:
-                krok_handler.emotionAnalyzer.threshold = float(trigger.group(2))
-                bot.msg(trigger.sender, trigger.nick 
+                emotion = None
+
+            try:
+                krok_handler.set_emotion_threshold(newThreshold, emotion)
+                bot.msg(channel, trigger.nick 
                     + ", new emotion detection threshold is "
                     + str(krok_handler.emotionAnalyzer.threshold))
+            except KrokHandler.exc.UnknownEmotionError:
+                bot.msg(channel, "Don't be a chomo. I don't recognize that emotion.")
+                bot.msg(channel, "Valid emotions are: " + ", ".join(TextAnalyzer.emotionList))
         else:
-            bot.msg(trigger.sender, trigger.nick 
+            bot.msg(channel, trigger.nick 
                 + ", current emotion detection threshold is "
                 + str(krok_handler.emotionAnalyzer.threshold))
     else:
-        bot.msg(trigger.sender, "Enable the NLP subsystem first, fuckwad.")
+        bot.msg(channel, "Enable the NLP subsystem first, fuckwad.")
 
 @module.require_admin
 @module.commands('nlp_enable')
@@ -609,29 +661,36 @@ def nlp_get_emotion(bot, trigger):
     krokID = 0
     message = ""
     emotions = {}
-
+    
     try:
         krokID = int(trigger.group(2))
     except ValueError:
         krok = str(trigger.group(2))
 
     if krokID:
-        if debug: print "Trigger argument is " + str(krokID)
+        if debug: print "Trigger argument is (int) " + str(krokID)
         emotions = krok_handler.get_emotion(bot, krokID=krokID)
     elif len(krok):
-        if debug: print "Trigger argument is " + str(krok)
+        if debug: print "Trigger argument is (str) " + str(krok)
         emotions = krok_handler.get_emotion(bot, krok=krok)
 
-    if len(emotions['krok']):  # This dict will be empty if we found no krok
-		krok = emotions['krok']['krok']
-		krokID = emotions['krok']['krokID']
-		if len(emotions['emotions']):  # This dict will be empty if no emotions were tagged
-			bot.msg(channel, "Emotions tagged for \"" + krok + "\" (" + str(krokID) + "):")
-			for emotion, confidence in emotions['emotions'].items():
-				print emotion + ": " + str(confidence)
-				bot.msg(channel, emotion + ": " + str(confidence))
-		else:
-			bot.msg(channel, "No emotions tagged for \"" + krok + "\"")
+    # Send this via PM if the reply would flood the channel
+    print "Length of emotions: " + str(len(emotions))
+    if len(emotions) > 3:
+        recipient = trigger.nick
+    else:
+        recipient = channel
+
+    if len(emotions):  # This dict will be empty if we found no krok
+        for krokID, result in emotions.items():
+            pprint(result)
+            if len(result['emotions']):  # This dict will be empty if no emotions were tagged
+                bot.msg(recipient, "Emotions tagged for \"" + result['krok'] + "\" (" + str(krokID) + "):")
+                for emotion, confidence in result['emotions'].items():
+                    print emotion + ": " + str(confidence)
+                    bot.msg(recipient, emotion + ": " + str(confidence))
+            else:
+                bot.msg(channel, "No emotions tagged for \"" + krok + "\"")
     else:
         # this krok is not in the db
         bot.msg(channel, "Sorry, \"" + trigger.group(2) + "\" does not appear in my database")
