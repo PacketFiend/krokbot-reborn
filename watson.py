@@ -13,9 +13,11 @@ from watson_developer_cloud import AlchemyLanguageV1, WatsonException
 from pprint import pprint
 from datetime import datetime
 
+import sqlalchemy
 from sqlalchemy import (create_engine, Table, Column, Text, Integer, 
                         String, MetaData, ForeignKey, exc)
 from sqlalchemy.sql import (select, exists, update, insert)
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError
 
 import traceback
@@ -26,6 +28,7 @@ watson_apikeys = Table('watson_apikeys', metadata, autoload=True, autoload_with=
 watson_krok = Table('watson_krok', metadata, autoload=True, autoload_with=engine)
 watson_kroksubjects = Table('watson_kroksubjects', metadata, autoload=True, autoload_with=engine)
 watson_krokemotions = Table('watson_krokemotions', metadata, autoload=True, autoload_with=engine)
+Session = sessionmaker(bind=engine)
 
 global debug
 debug = False
@@ -193,8 +196,8 @@ class TextAnalyzer:
             json_data = json.loads(result)
 
         for emotion in TextAnalyzer.emotionList:
-            if float(json_data['docEmotions']['emotion']) > self.threshold['emotion']:
-                emotions["emotion"] = float(json_data['docEmotions']['emotion'])
+            if float(json_data['docEmotions'][emotion]) > self.threshold[emotion]:
+                emotions[emotion] = float(json_data['docEmotions'][emotion])
                 self.emotionDetected = True
 
         if self.emotionDetected == True:
@@ -416,8 +419,7 @@ class KrokHandler:
             return False
 
         emotions = {}
-        emotions['krok'] = {}
-        emotions['emotions'] = {}
+        session = Session()
         try:
             conn = engine.connect()
 
@@ -425,36 +427,52 @@ class KrokHandler:
             if krokID > 0:
                 query = select([watson_krok.c.text]).where(watson_krok.c.krokid==str(krokID))
                 result = conn.execute(query)
-                if result.rowcount > 0:
-                    krok = result.first()[0]
+                rowcount = session.query(sqlalchemy.func.count(watson_krok).filter(watson_krok.c.krokid==krokID))
+                if rowcount > 0:
+                    result = session.query(watson_krok).filter(watson_krok.c.krokid==krokID)
+                    row = result.first()
+                    krokID = row.krokid
+                    krok = row.text
+                    query = select([watson_krokemotions.c.emotion,\
+                                    watson_krokemotions.c.confidence])\
+                                    .where(watson_krokemotions.c.krokid==krokID)
+                    results = conn.execute(query)
+                    if results.rowcount > 0:
+                        emotions[krokID] = {}
+                        emotions[krokID]['krok'] = krok
+                        emotions[krokID]['emotions'] = {}
+                        for result in results:
+                            emotions[krokID]['emotions'][result['emotion']] = result['confidence']
+
+                    pprint(emotions)
+                    
                 else:
                     if debug: print "No krok found for id " + krokID
 
             # First, check if this krok is already in the local database.
             elif len(krok):
-                query = select([watson_krok.c.krokid]).where(watson_krok.c.text == krok)
-                result = conn.execute(query)
-                if result.rowcount > 0:
-                    krokID = result.first()[0]
+                rowcount = session.query(sqlalchemy.func.count(watson_krok).filter(watson_krok.c.text.op('regexp')(krok)))
+                result = session.query(watson_krok).filter(watson_krok.c.text.op('regexp')(krok))
+                if rowcount > 0:
+                    for row in result:
+                        krokID = row.krokid
+                        krok = row.text
+                        query = select([watson_krokemotions.c.emotion,\
+                                        watson_krokemotions.c.confidence])\
+                                        .where(watson_krokemotions.c.krokid==krokID)
+                        results = conn.execute(query)
+                        if results.rowcount > 0:
+                            emotions[krokID] = {}
+                            emotions[krokID]['krok'] = row.text
+                            emotions[krokID]['emotions'] = {}
+                            for result in results:
+                                if debug: print result['emotion'] + ": " + str(result['confidence'])
+                                emotions[krokID]['emotions'][result['emotion']] = result['confidence']
+                        else:
+                            if debug: print "No emotions tagged to " + krok                             
+
                 else:
                     print krok + ": not in db"
-
-            # At this point, we should have both the krok and the krokID? Right?
-            if len(krok) and krokID:
-                emotions['krok']['krok'] = krok
-                emotions['krok']['krokID'] = krokID
-                query = select([watson_krokemotions.c.emotion,
-                                watson_krokemotions.c.confidence])\
-                                .where(watson_krokemotions.c.krokid==krokID)
-                results = conn.execute(query)
-
-                if results.rowcount > 0:
-                    pprint(results)
-                    for result in results:
-                        if debug: print result['emotion'] + ": " + str(result['confidence'])
-                        emotions['emotions'][result['emotion']] = result['confidence']
-                else:
-                    if debug: print "No emotions tagged to " + krok
 
             else:
                 if debug: print "No matching krok in the database!"
@@ -643,29 +661,36 @@ def nlp_get_emotion(bot, trigger):
     krokID = 0
     message = ""
     emotions = {}
-
+    
     try:
         krokID = int(trigger.group(2))
     except ValueError:
         krok = str(trigger.group(2))
 
     if krokID:
-        if debug: print "Trigger argument is " + str(krokID)
+        if debug: print "Trigger argument is (int) " + str(krokID)
         emotions = krok_handler.get_emotion(bot, krokID=krokID)
     elif len(krok):
-        if debug: print "Trigger argument is " + str(krok)
+        if debug: print "Trigger argument is (str) " + str(krok)
         emotions = krok_handler.get_emotion(bot, krok=krok)
 
-    if len(emotions['krok']):  # This dict will be empty if we found no krok
-		krok = emotions['krok']['krok']
-		krokID = emotions['krok']['krokID']
-		if len(emotions['emotions']):  # This dict will be empty if no emotions were tagged
-			bot.msg(channel, "Emotions tagged for \"" + krok + "\" (" + str(krokID) + "):")
-			for emotion, confidence in emotions['emotions'].items():
-				print emotion + ": " + str(confidence)
-				bot.msg(channel, emotion + ": " + str(confidence))
-		else:
-			bot.msg(channel, "No emotions tagged for \"" + krok + "\"")
+    # Send this via PM if the reply would flood the channel
+    print "Length of emotions: " + str(len(emotions))
+    if len(emotions) > 3:
+        recipient = trigger.nick
+    else:
+        recipient = channel
+
+    if len(emotions):  # This dict will be empty if we found no krok
+        for krokID, result in emotions.items():
+            pprint(result)
+            if len(result['emotions']):  # This dict will be empty if no emotions were tagged
+                bot.msg(recipient, "Emotions tagged for \"" + result['krok'] + "\" (" + str(krokID) + "):")
+                for emotion, confidence in result['emotions'].items():
+                    print emotion + ": " + str(confidence)
+                    bot.msg(recipient, emotion + ": " + str(confidence))
+            else:
+                bot.msg(channel, "No emotions tagged for \"" + krok + "\"")
     else:
         # this krok is not in the db
         bot.msg(channel, "Sorry, \"" + trigger.group(2) + "\" does not appear in my database")
