@@ -7,7 +7,7 @@
 #
 
 import config
-from sopel import module, tools
+from sopel import module, tools, formatting
 from sopel.tools.target import User, Channel
 from sopel.tools import Identifier, iteritems, events
 from sopel.module import rule, event, commands
@@ -61,6 +61,16 @@ def check_for_rockhos(bot, trigger):
     if trigger.admin:
         bot.say("A glorious leader has joined!")
 
+
+@module.unblockable
+@module.event('MODE')
+@module.rule('.*')
+def show_events(bot, trigger):
+    if "-b" in trigger.args and any("charter.com" in substr for substr in trigger.args):
+        message = formatting.bold(formatting.color("RELEASE THE KROKEN!!!", "red"))
+        bot.msg(trigger.sender, message)
+    elif "+b" in trigger.args and any("charter.com" in substr for substr in trigger.args):
+        bot.msg(trigger.sender, "The kroken has been contained!")
 
 '''
 Get TOR Exit nodes list and parse the IPs into a python list.
