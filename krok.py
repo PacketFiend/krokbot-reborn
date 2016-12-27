@@ -34,8 +34,7 @@ metadata = MetaData()
 
 from watson import KrokHandler
 
-#engine = create_engine("mysql+pymysql://krok:kr0kl4bs@localhost/krokbot?host=localhost?port=3306")
-engine = create_engine(config.sql_connection_string)
+engine = create_engine(config.sql_connection_string, pool_recycle = 14400)
 Session = sessionmaker(bind=engine)
 
 bestkrok = Table('bestkrok', metadata, autoload=True, autoload_with=engine)
