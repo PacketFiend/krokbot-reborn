@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 #
 # Name:    rockho_detector.py
-# Author:  ekim
-# Date:    Apr 18th, 2016
+# Author:  ekim, Striek
+# Date:    December 2016
 # Summary: krokbot rockho detector
 #
 
 import config
-from sopel import module, tools
+from sopel import module, tools, formatting
 from sopel.tools.target import User, Channel
 from sopel.tools import Identifier, iteritems, events
 from sopel.module import rule, event, commands
@@ -46,21 +46,33 @@ def check_for_rockhos(bot, trigger):
 
     results = conn.execute(query)
     for item in results:
-	hostmasklist = item[1]
-	greeting = item[2]
+        hostmasklist = item[1]
+        greeting = item[2]
 
-	if match: break			# Or we end up printing multiple lines for joins if a user has more than one nick
-	if not hostmasklist: continue	# This is really just for readability, there's too many indents...
+        # Or we end up spamming on joins if a user has more than one nick in the DB
+        if match: break
+        # This is really just for readability, there's too many indents...
+        if not hostmasklist: continue  # Does this nick have an empty hostmask list?
 
-	hostmasks = hostmasklist.split(',')
-	for hostmask in hostmasks:
-		if hostmask.strip() in trigger.hostmask and greeting:
-			bot.msg(trigger.sender, greeting)
-			match = True
-				
+        hostmasks = hostmasklist.split(',')
+        for hostmask in hostmasks:
+            if hostmask.strip() in trigger.hostmask and greeting:
+                bot.msg(trigger.sender, greeting)
+                match = True
+                
     if trigger.admin:
         bot.say("A glorious leader has joined!")
 
+
+@module.unblockable
+@module.event('MODE')
+@module.rule('.*')
+def show_events(bot, trigger):
+    if "-b" in trigger.args and any("charter.com" in substr for substr in trigger.args):
+        message = formatting.bold(formatting.color("RELEASE THE KROKEN!!!", "red"))
+        bot.msg(trigger.sender, message)
+    elif "+b" in trigger.args and any("charter.com" in substr for substr in trigger.args):
+        bot.msg(trigger.sender, "The kroken has been contained!")
 
 '''
 Get TOR Exit nodes list and parse the IPs into a python list.
