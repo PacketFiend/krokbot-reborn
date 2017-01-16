@@ -184,8 +184,8 @@ def words_stats(bot, trigger):
     channel = trigger.sender
     channel = channel.decode('utf-8')
     line = trigger.args[1:]
-    line =  map(str, line)
-    #line = line.encode('ascii')
+    #line =  map(str, line)
+    line = line.decode('utf-8')
     word_count = len(str(line).split(" "))
 
     if re.match(r'\#', trigger.sender):
@@ -221,6 +221,7 @@ def dump_word_stats(bot, trigger=None):
     for channel in bot.memory['word_counts'].keys():
         for nickname, word_count in bot.memory['word_counts'][channel].items():
             rs = session.query(exists().where((table.channel == channel) & (table.name == nickname))).scalar()
+            print("Running stats_dump_words() for " + channel + "\n")
 
             if rs is True:
                 try:
