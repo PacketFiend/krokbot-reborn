@@ -23,12 +23,15 @@ def sluttosphere_setup(bot):
     titty_subreddits = ['boobs', 'gonemild', 'tits', 'redheads', 'brunettes', 'tittydrop', 'downblouse', 'titties']
     clam_subreddits = ['pussy', 'rearpussy', 'pussy_girls', 'asianpussy', 'perfectpussies', 'ready_pussy', 'pussyjuices']
     sideboob_subreddits = ['sideboob', 'sideboobs']
+    sharpies_subreddits = ['buttsharpies']
     global slut_links_tits
     global slut_links_clams
     global slut_links_sideboobs
+    global slut_links_buttsharpies
     slut_links_tits = []
     slut_links_clams = []
     slut_links_sideboobs = []
+    slut_links_buttsharpies = []
 
     for sub in titty_subreddits:
         r_posts = r.get_subreddit(sub).get_new(limit=15)
@@ -42,9 +45,13 @@ def sluttosphere_setup(bot):
         r_posts = r.get_subreddit(sub).get_new(limit=15)
         slut_links_sideboobs = ["[" + s.title + "] - " + s.url for s in r_posts]
 
+    for sub in sharpies_subreddits:
+        r_posts = r.get_subreddit(sub).get_new(limit=15)
+        slut_links_buttsharpies = ["[" + s.title + "] - " + s.url for s in r_posts]
+
     print(sluttosphere_setup.__name__ + " - Grabbed latest batch of slut pics")
 
-    return (slut_links_tits, slut_links_clams, slut_links_sideboobs)
+    return (slut_links_tits, slut_links_clams, slut_links_sideboobs, slut_links_buttsharpies)
 
 @module.rate(20)
 @module.commands('tittypic')
@@ -81,6 +88,19 @@ def sluttosphere_sideboob(bot, trigger):
         bot.say(rand_submission)
     except (KeyError, IndexError, NameError):
         errmsg = "Got no poppin' side boobs yet"
+        bot.say(errmsg)
+        dummy_arg = None
+        sluttosphere_setup(dummy_arg)
+
+@module.rate(20)
+@module.commands('sharpie')
+def sluttosphere_sharpie(bot, trigger):
+    try:
+        rand_submission = "NSFW - " + random.choice(slut_links_buttsharpies)
+        print(sluttosphere_sharpie.__name__ + " - " + rand_submission)
+        bot.say(rand_submission)
+    except (KeyError, IndexError, NameError):
+        errmsg = "Let's see how many sharpies I can fit up my asshole"
         bot.say(errmsg)
         dummy_arg = None
         sluttosphere_setup(dummy_arg)
