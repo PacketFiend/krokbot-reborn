@@ -185,7 +185,8 @@ def words_stats(bot, trigger):
     channel = channel.decode('utf-8')
     line = trigger.args[1:]
     #line =  map(str, line)
-    line = line.decode('utf-8')
+    #line = line.decode('utf-8')
+    line = [word.encode('utf-8') for word in items]
     word_count = len(str(line).split(" "))
 
     if re.match(r'\#', trigger.sender):
