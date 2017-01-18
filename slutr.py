@@ -8,23 +8,19 @@
 
 from sopel import module, tools
 import random
-import time
 from random import randint
-
-import sys
-import requests
 import praw
 
-# Define some memory dicts/lists for keeping track of users
+# Define some memory dicts/lists for keeping track of pics that were already used
 def setup(bot):
-    bot.memory["user_quotes"] = {}
+    bot.memory["used_pics"] = []
 
 # slutr extensions
 # Reddit titty pic poster
 @module.interval(3600)
 def sluttosphere_setup(bot):
     r = praw.Reddit(user_agent='sopel_get_titty_pic')
-    titty_subreddits = ['boobs', 'gonemild', 'tits', 'redheads', 'brunettes', 'tittydrop', 'downblouse']
+    titty_subreddits = ['boobs', 'gonemild', 'tits', 'redheads', 'brunettes', 'tittydrop', 'downblouse', 'titties']
     clam_subreddits = ['pussy', 'rearpussy', 'pussy_girls', 'asianpussy', 'perfectpussies', 'ready_pussy', 'pussyjuices']
     sideboob_subreddits = ['sideboob', 'sideboobs']
     global slut_links_tits
@@ -46,7 +42,7 @@ def sluttosphere_setup(bot):
         r_posts = r.get_subreddit(sub).get_new(limit=15)
         slut_links_sideboobs = ["[" + s.title + "] - " + s.url for s in r_posts]
 
-    print sluttosphere_setup.__name__ + " - Grabbed latest batch of slut pics"
+    print(sluttosphere_setup.__name__ + " - Grabbed latest batch of slut pics")
 
     return (slut_links_tits, slut_links_clams, slut_links_sideboobs)
 
@@ -55,7 +51,7 @@ def sluttosphere_setup(bot):
 def sluttosphere_tits(bot, trigger):
     try:
         rand_submission = "NSFW - " + random.choice(slut_links_tits)
-        print sluttosphere_tits.__name__ + " - " + rand_submission
+        print(sluttosphere_tits.__name__ + " - " + rand_submission)
         bot.say(rand_submission)
     except (KeyError, IndexError, NameError):
         errmsg = "Got no sluts yet"
@@ -68,7 +64,7 @@ def sluttosphere_tits(bot, trigger):
 def sluttosphere_clams(bot, trigger):
     try:
         rand_submission = "NSFW - " + random.choice(slut_links_clams)
-        print sluttosphere_clams.__name__ + " - " + rand_submission
+        print(sluttosphere_clams.__name__ + " - " + rand_submission)
         bot.say(rand_submission)
     except (KeyError, IndexError, NameError):
         errmsg = "Got no pink tacos yet"
@@ -81,7 +77,7 @@ def sluttosphere_clams(bot, trigger):
 def sluttosphere_sideboob(bot, trigger):
     try:
         rand_submission = "NSFW - " + random.choice(slut_links_sideboobs)
-        print sluttosphere_sideboob.__name__ + " - " + rand_submission
+        print(sluttosphere_sideboob.__name__ + " - " + rand_submission)
         bot.say(rand_submission)
     except (KeyError, IndexError, NameError):
         errmsg = "Got no poppin' side boobs yet"
