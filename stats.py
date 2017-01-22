@@ -159,7 +159,7 @@ def get_top_stats(bot, trigger):
     session.close()
 
     stats = (str(top_stats).replace('OrderedDict', '').replace('(', '').replace(')', '').replace(',', ':'))
-    bot.msg(channel, reply + ": " + str(stats))
+    bot.msg(channel, reply + ": " + stats)
 
 '''
 !words command that tracks channel's top talkers with word counts for a given timespan.
