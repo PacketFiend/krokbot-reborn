@@ -259,7 +259,6 @@ class TextAnalyzer:
             else:
                 bot.msg(channel, "Unhandled Watson Exception: " + str(message))
 
-        print result
         json_data = json.loads(result)
         concepts = json_data['concepts']
         if json_data['concepts']:
@@ -374,14 +373,15 @@ class KrokHandler:
                 if debug: print "Analyzed emotions"; print emotions
             if self.nlp_subject_enabled:
                 if debug: print "About to analyze subjects"
-                concepts = self.subjectAnalyzer.analyzeSubject(bot, trigger)
-                if debug: print "Analyzed subjects"; print concepts
+                subjects = self.subjectAnalyzer.analyzeSubject(bot, trigger)
+                if debug: print "Analyzed subjects"; print subjects
 
             # Record the krok, if there's any context identified, or we forced it
-            if concepts or emotions or force:
+            if subjects or emotions or force:
                 if record_date:
                     query = watson_krok.insert().values(text = trigger,
-                                    date = datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                                    date = datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                    emotions=bool(emotions), subjects=bool(subjects))
                 else:
                     query = watson_krok.insert().values(text = trigger)
                 result = conn.execute(query)
@@ -393,8 +393,8 @@ class KrokHandler:
             try:
                 if emotions:
                     self.emotionHandler.recordEmotions(trigger,emotions)
-                if concepts:
-                    self.subjectHandler.recordSubjects(trigger, concepts)
+                if subjects:
+                    self.subjectHandler.recordSubjects(trigger, subjects)
             except APIKey.exc.NoMoreKeysException:
                 print "NoMoreKeysException: " + str(message)
 
