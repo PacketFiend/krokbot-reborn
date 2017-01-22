@@ -259,7 +259,6 @@ class TextAnalyzer:
             else:
                 bot.msg(channel, "Unhandled Watson Exception: " + str(message))
 
-        print result
         json_data = json.loads(result)
         concepts = json_data['concepts']
         if json_data['concepts']:
