@@ -12,13 +12,14 @@ from sopel import module, tools
 import random
 import time
 from random import randint
-from sqlalchemy import (create_engine, Table, Column, Integer, String, MetaData, ForeignKey, exc)
+from sqlalchemy import (create_engine, Table, Column, Integer, String, MetaData, ForeignKey, exc, desc)
 from sqlalchemy.sql import (select, exists)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 import config
 import re
+from collections import OrderedDict
 
 '''
 Setup database ORM stuff. Database location is fed in via config module.
@@ -60,8 +61,7 @@ def start_db():
     return session
 
 '''
-Define some memory dicts/lists for keeping track of users and their word counts.
-'''
+Define some memory dicts/lists for keeping track of users and their word counts. '''
 def setup(bot):
 
     session = start_db()
@@ -151,11 +151,14 @@ def get_top_stats(bot, trigger):
         table = Words
 
     session = start_db()
-    top_stats = {nickname.name: nickname.count for nickname in session.query(table.name, table.count).filter_by(channel=channel)}
-
+    # OrderedDict is necessary to keep order from asc to desc. Also, don't use a
+    # dict comprehension in this case as it doesn't keep order with OrderedDict.
+    top_stats = OrderedDict()
+    for nickname in session.query(table.name, table.count).filter_by(channel=channel).order_by(desc(table.count)):
+        top_stats[nickname.name] = nickname.count
     session.close()
 
-    stats = {k.decode('utf-8'): v for k, v in top_stats.items()}
+    stats = (str(top_stats).replace('OrderedDict', '').replace('(', '').replace(')', '').replace(',', ':'))
     bot.msg(channel, reply + ": " + str(stats))
 
 '''
