@@ -41,10 +41,10 @@ bestkrok = Table('bestkrok', metadata, autoload=True, autoload_with=engine)
 watson_krok = Table('watson_krok', metadata, autoload=True, autoload_with=engine)
 watson_krokemotions = Table('watson_krokemotions', metadata, autoload=True, autoload_with=engine)
 
-api = twitter.Api(consumer_key=config.tw_consumer_key,
-	consumer_secret=config.tw_consumer_secret,
-	access_token_key=config.tw_access_token_key,
-	access_token_secret=config.tw_access_token_secret)
+#api = twitter.Api(consumer_key=config.tw_consumer_key,
+#	consumer_secret=config.tw_consumer_secret,
+#	access_token_key=config.tw_access_token_key,
+#	access_token_secret=config.tw_access_token_secret)
 
 geolocator = Nominatim()
 
@@ -57,8 +57,8 @@ def sauce(bot, trigger):
     bot.memory["who"] = {}
     bot.write(["WHO", "#OFFTOPIC"])
     for w in bot.memory["who"]:
-        print w	
-		
+        print w
+
 @module.rate(20) # we may need to adjust this, but we dont need people spamming the command
 @module.commands('newkrok')
 def newkrok(bot, trigger):
@@ -113,36 +113,41 @@ def shootout(bot, trigger):
     session = Session()
     imp = trigger.group(2)
     conn = engine.connect()
+    limit = 0
 
-    if imp is not None:
-        shard = imp.split(" ")
-        if int(shard[0]) > 5:
-            bot.say(trigger.nick + ": quit being a chomo, chomo")   
+    try:
+        if imp is not None:
+            shard = imp.split(" ")
+            if int(shard[0]) > 5:
+                bot.say(trigger.nick + ": quit being a chomo, chomo")
+            else:
+                limit = int(shard[0])
         else:
-            limit = int(shard[0])
-    else:
-        limit = 1
-    if len(imp) > 1:
-        emotion = str(shard[1])
-        if emotion not in KrokHandler.emotionList:
-            bot.say("Don't be a chomo. I don't recognize that emotion. Valid emotions are: "\
-                    + ", ".join(KrokHandler.emotionList))
-            return
-        items = session.query(watson_krok).join(watson_krokemotions)\
-            .filter(watson_krokemotions.c.emotion == emotion)\
-            .order_by('RAND()')\
-            .limit(limit)
-    else:
-        items = session.query(watson_krok).join(watson_krokemotions)\
-            .order_by('RAND()')\
-            .limit(limit)
-        
-    #q = select([bestkrok.c.quote]).order_by('RAND()').limit(limit)
-    pprint(items)
-    #items = conn.execute(q)
-    for i in items:
-        pprint(i[1])
-        bot.say(i[1])
+            limit = 1
+
+        if len(imp) > 1:
+            emotion = str(shard[1])
+            if emotion not in KrokHandler.emotionList:
+                bot.say("Don't be a chomo. I don't recognize that emotion. Valid emotions are: "\
+                        + ", ".join(KrokHandler.emotionList))
+                return
+            items = session.query(watson_krok).join(watson_krokemotions)\
+                .filter(watson_krokemotions.c.emotion == emotion)\
+                .order_by('RAND()')\
+                .limit(limit)
+        else:
+            items = session.query(watson_krok).join(watson_krokemotions)\
+                .order_by('RAND()')\
+                .limit(limit)
+
+        #q = select([bestkrok.c.quote]).order_by('RAND()').limit(limit)
+        pprint(items)
+        #items = conn.execute(q)
+        for i in items:
+            pprint(i[1])
+            bot.say(i[1])
+    except (ValueError, AttributeError, TypeError):
+        bot.say(trigger.nick + ": quit being a chomo, chomo. a number between 1 and 5 is required you tard!")
 
 # this gets a random quote from the database
 @module.commands('krokquote')
@@ -154,7 +159,7 @@ def krokquote(bot, trigger):
     i = 0
     for row in items:
         i += 1
-	
+
     rnd = randint(0,i)
     x = 0
     q = select([bestkrok.c.id, bestkrok.c.quote]).where(bestkrok.c.quote != '')
@@ -164,7 +169,7 @@ def krokquote(bot, trigger):
             quote = str(q[1])
             q_id = str(q[0])
             x += 1
-    try: 
+    try:
 	    return_quote = "("+q_id+") "+quote
     except:
 	    return_quote = "Nice going asshole, way to fuck it up"
@@ -182,7 +187,7 @@ def talk_shit(bot, trigger):
 	query = select([bestkrok.c.id, bestkrok.c.quote]).where(bestkrok.c.quote.like('%'+name+'%'))
 	items = conn.execute(query)
 
-	cnt = 0 
+	cnt = 0
 	for i in items:
 		cnt += 1
 	if cnt == 0:
@@ -197,7 +202,7 @@ def talk_shit(bot, trigger):
 		clean_quote = ''
 		for q in items:
 			if cnt == quote:
-				clean_quote = q[1].replace("\\'","'")	
+				clean_quote = q[1].replace("\\'","'")
 			else:
 				pass
 			cnt += 1
@@ -308,8 +313,8 @@ def random_yo(bot):
                         nicks.append(nick)
             rand_nick = random.choice(list(nicks))
 
-            rand_krok = random_krok() 
-            rand_yo = "yo " + rand_nick 
+            rand_krok = random_krok()
+            rand_yo = "yo " + rand_nick
             bot.msg(channel, rand_yo, 1)
             bot.msg(channel, rand_krok, 1)
         else:
@@ -326,8 +331,7 @@ def random_yo_callable(bot, trigger):
     nicks = [nick for nick in names.keys() if nick not in blocked_nicks]
     rand_nick = random.choice(list(nicks))
 
-    rand_krok = random_krok() 
-    rand_yo = "yo " + rand_nick 
+    rand_krok = random_krok()
+    rand_yo = "yo " + rand_nick
     bot.msg(channel, rand_yo, 1)
     bot.msg(channel, rand_krok, 1)
-
