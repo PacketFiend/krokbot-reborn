@@ -115,6 +115,7 @@ class TextAnalyzer:
 
     master_nlp_enabled = False
     emotionList = ["joy", "anger", "sadness", "fear", "disgust"]
+    alchemy_language = AlchemyLanguageV1(api_key = APIKey.name)
 
     def __init__(self, name):
         '''Opens a dialogue with Watson and sets up sane defaults. Also sets up our API
@@ -123,7 +124,6 @@ class TextAnalyzer:
         for emotion in TextAnalyzer.emotionList:
             self.threshold[emotion] = config.watson_emotion_detection_threshold
         self.emotionDetected = False
-        self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.name)
 
     def analyzeEmotion(self, bot, trigger):
         '''Runs IRC messages through Watson's Alchemy API, attempting to identify
@@ -149,7 +149,7 @@ class TextAnalyzer:
             # If there's no more API keys we can use, disable the NLP subsystem and exit.
             # Otherwise, move to the next key.
             try:
-                self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
+                TextAnalyzer.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
                 emotions = self.analyzeEmotion(bot, trigger)  # Start over w/new key.
                 return emotions
             except APIKey.exc.NoMoreKeysException:
@@ -160,8 +160,8 @@ class TextAnalyzer:
 
         try:
             # This is the block that actually sends messages off to Alchemy for processing.
-            if debug: print "In analyzeEmotion(): Analyzing emotion"
-            json_dump = self.alchemy_language.combined(
+            if debug: print "In analyzeEmotion(): Analyzing emotion with " + APIKey.name
+            json_dump = TextAnalyzer.alchemy_language.combined(
                             text=trigger,
                             extract='doc-emotion',
                             max_items=1,
@@ -175,14 +175,17 @@ class TextAnalyzer:
         except WatsonException, message:
             # This really shouldn't happen if we set the max query count correctly.
             # This means this block is untestable :(
-            if "daily-transaction-limit-exceeded" in str(message):
+            if "daily-transaction-limit-exceeded" in str(message) \
+                    or "invalid-api-key" in str(message):
                 if bot is not None:
                     bot.msg(channel, "API daily transaction limit exceeded. "
                                      +"Switching to next key :D (" + str(message))
                 else:
                     print "API daily transaction limit exceeded. Switching to next key."
-                self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
+                TextAnalyzer.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
                 print "API Key is now: " + APIKey.name
+                emotions = self.analyzeEmotion(bot, trigger)  # Start over w/new key
+                return emotions
             else:
                 if bot is not None:
                     bot.msg(channel, "Unhandled Watson Exception: " + str(message))
@@ -225,7 +228,7 @@ class TextAnalyzer:
             # If there's no more API keys we can use, disable the NLP subsystem and exit.
             # Otherwise, move to the next key.
             try:
-                self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
+                TextAnalyzer.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
                 concepts = self.analyzeSubject(bot, trigger)   # Start over with new key.
                 return concepts
             except APIKey.exc.NoMoreKeysException:
@@ -237,7 +240,7 @@ class TextAnalyzer:
         try:
             # This is the block that actually sends messages off to Alchemy for processing.
             result = json.dumps(
-                    self.alchemy_language.concepts(text=trigger,
+                    TextAnalyzer.alchemy_language.concepts(text=trigger,
                                                    show_source_text = 1,
                                                    linked_data = 0,
                                                    language='english')
@@ -247,14 +250,18 @@ class TextAnalyzer:
         except WatsonException, message:
             # This really shouldn't happen if we set the max query count correctly.
             # This means this block is untestable :(
-            if "daily-transaction-limit-exceeded" in str(message):
+            if "daily-transaction-limit-exceeded" in str(message) \
+                    or "invalid-api-key" in str(message):
                 if bot is not None:
                     bot.msg(channel, "API daily transaction limit exceeded. \
                     Switching to next key :D (" + str(message))
                 else:
                     print "API daily transaction limit exceeded. Switching to next key."
-                self.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
+                print "API key was: " + APIKey.name
+                TextAnalyzer.alchemy_language = AlchemyLanguageV1(api_key = APIKey.next())
                 print "API Key is now: " + APIKey.name
+                subjects = self.analyzeSubject(bot, trigger)  # Start over w/new key
+                return subjects
                 return
             else:
                 bot.msg(channel, "Unhandled Watson Exception: " + str(message))
@@ -367,14 +374,14 @@ class KrokHandler:
             if result.rowcount != 0:
                 if debug: print "Found " + str(result.rowcount) + " matching entries."
                 return
-            if self.nlp_emotion_enabled:
-                if debug: print "About to analyze emotions"
-                emotions = self.emotionAnalyzer.analyzeEmotion(bot, trigger)
-                if debug: print "Analyzed emotions"; print emotions
             if self.nlp_subject_enabled:
                 if debug: print "About to analyze subjects"
                 subjects = self.subjectAnalyzer.analyzeSubject(bot, trigger)
                 if debug: print "Analyzed subjects"; print subjects
+            if self.nlp_emotion_enabled:
+                if debug: print "About to analyze emotions"
+                emotions = self.emotionAnalyzer.analyzeEmotion(bot, trigger)
+                if debug: print "Analyzed emotions"; print emotions
 
             # Record the krok, if there's any context identified, or we forced it
             if subjects or emotions or force:
