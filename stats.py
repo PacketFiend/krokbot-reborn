@@ -12,13 +12,14 @@ from sopel import module, tools
 import random
 import time
 from random import randint
-from sqlalchemy import (create_engine, Table, Column, Integer, String, MetaData, ForeignKey, exc)
+from sqlalchemy import (create_engine, Table, Column, Integer, String, MetaData, ForeignKey, exc, desc)
 from sqlalchemy.sql import (select, exists)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 import config
 import re
+from collections import OrderedDict
 
 '''
 Setup database ORM stuff. Database location is fed in via config module.
@@ -60,8 +61,7 @@ def start_db():
     return session
 
 '''
-Define some memory dicts/lists for keeping track of users and their word counts.
-'''
+Define some memory dicts/lists for keeping track of users and their word counts. '''
 def setup(bot):
 
     session = start_db()
@@ -69,7 +69,7 @@ def setup(bot):
     session.close()
     for result in results:
         channel = result[1]
-        channel = channel.encode('ascii')
+        channel = channel.decode('utf-8')
         bot.memory['word_counts'] = {}
         bot.memory['word_counts'][channel] = {}
 
@@ -85,7 +85,7 @@ def insert_top_action(bot, trigger):
     if trigger.match and 'sopel' not in trigger.nick:
         nickname = trigger.nick
         channel = trigger.sender
-        channel = channel.encode('ascii')
+        channel = channel.decode('utf-8')
         actions = []
 
         if 'lather' in trigger.group(0):
@@ -135,7 +135,7 @@ database table we'll be querying.
 @module.commands('toplather', 'toplure', 'topbait', 'words')
 def get_top_stats(bot, trigger):
     channel = trigger.sender
-    channel = channel.encode('ascii')
+    channel = channel.decode('utf-8')
 
     if 'lather' in trigger.group(1):
         reply = "Top Lather Action"
@@ -151,12 +151,15 @@ def get_top_stats(bot, trigger):
         table = Words
 
     session = start_db()
-    top_stats = {nickname.name: nickname.count for nickname in session.query(table.name, table.count).filter_by(channel=channel)}
-
+    # OrderedDict is necessary to keep order from asc to desc. Also, don't use a
+    # dict comprehension in this case as it doesn't keep order with OrderedDict.
+    top_stats = OrderedDict()
+    for nickname in session.query(table.name, table.count).filter_by(channel=channel).order_by(desc(table.count)):
+        top_stats[nickname.name] = nickname.count
     session.close()
 
-    stats = {k.encode('ascii'): v for k, v in top_stats.items()}
-    bot.msg(channel, reply + ": " + str(stats))
+    stats = (str(top_stats).replace('OrderedDict', '').replace('(', '').replace(')', '').replace(',', ':'))
+    bot.msg(channel, reply + ": " + stats)
 
 '''
 !words command that tracks channel's top talkers with word counts for a given timespan.
@@ -180,12 +183,13 @@ nickname, count
 @module.rule(r'.*')
 def words_stats(bot, trigger):
     nickname = trigger.user
-    nickname = nickname.encode('ascii')
+    nickname = nickname.decode('utf-8')
     channel = trigger.sender
-    channel = channel.encode('ascii')
+    channel = channel.decode('utf-8')
     line = trigger.args[1:]
-    line =  map(str, line)
-    #line = line.encode('ascii')
+    #line =  map(str, line)
+    #line = line.decode('utf-8')
+    line = [word.encode('utf-8') for word in line]
     word_count = len(str(line).split(" "))
 
     if re.match(r'\#', trigger.sender):
@@ -221,6 +225,7 @@ def dump_word_stats(bot, trigger=None):
     for channel in bot.memory['word_counts'].keys():
         for nickname, word_count in bot.memory['word_counts'][channel].items():
             rs = session.query(exists().where((table.channel == channel) & (table.name == nickname))).scalar()
+            print("Running stats_dump_words() for " + channel + "\n")
 
             if rs is True:
                 try:
