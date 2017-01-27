@@ -81,7 +81,6 @@ def sluttosphere_get_pic(bot, trigger):
         # first we pick a random pic, then we check if it is in the memory and if
         # the memory is full for each type of pics.
         while True:
-            print(pics)
             pic = random.choice(pics.keys())
             if pic in bot.memory['used_pics'][pic_type]:
                 pass
