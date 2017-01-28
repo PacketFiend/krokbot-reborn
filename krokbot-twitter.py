@@ -128,7 +128,7 @@ def displayUpdates(bot, trigger):
 @module.require_admin
 @module.commands('showupdates')
 def showUpdates(bot, trigger):
-	
+
 	global displayUpdates
 	displayUpdates = True
 
@@ -187,3 +187,23 @@ def isLoggedIn(bot, nick):
 	else:
 		whoisReceived = False
 		return False
+
+@module.commands('scope')
+@module.rate(20)
+def get_periscope(bot, trigger):
+    channel = trigger.sender
+    if trigger.group(2) is not None:
+        search_term = "#periscope " + str(trigger.group(2))
+        query = api.GetSearch(term=search_term, result_type="recent", count="5")
+
+        for q in query:
+            #bot.msg(channel, (str(q.text) + str(q.created_at)), 1)
+            text = q.text
+            text.encode('utf-8')
+            created_at = q.created_at
+            created_at.encode('utf-8')
+            user = q.user.screen_name
+            user.encode('utf-8')
+            bot.say("[ " + text + " ] - @" + user  + " - " + created_at)
+    else:
+        bot.say("Don't be a chomo, enter a search string")
