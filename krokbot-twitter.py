@@ -188,22 +188,53 @@ def isLoggedIn(bot, nick):
 		whoisReceived = False
 		return False
 
+'''
+Search for periscope.tv tweets. For more information on how tweets are
+constructed, please see https://dev.twitter.com/overview/api/tweets. If you want
+to browse the tweet's structure, run api.GetStatus(id) where id = tweet's id and
+pipe it via jq or jsonlint.
+
+Actual tweets can be directly queries for attributes. RT tweets will typically be
+truncated. To get around this, we need to query RT's tweet.retweeted_status.id to
+get original tweet's id. This id can then be queried for full text/attributes.
+
+Args:
+    scope  (str):   command to be acted on
+    param1 (str):   search string for twitter query, part of trigger.group()
+
+Returns:
+    query (obj):    query object with a list of results; parse this to get
+                    individual tweets
+    tweet (obj):    tweet object with various attributes of a tweet
+'''
 @module.commands('scope')
 @module.rate(20)
 def get_periscope(bot, trigger):
     channel = trigger.sender
+    # make sure that we actually have a search term, shitbird
     if trigger.group(2) is not None:
+        # we're doing America a favor...
         search_term = "#periscope " + str(trigger.group(2))
         query = api.GetSearch(term=search_term, result_type="recent", count="5")
-
         for q in query:
-            #bot.msg(channel, (str(q.text) + str(q.created_at)), 1)
-            text = q.text
-            text.encode('utf-8')
-            created_at = q.created_at
-            created_at.encode('utf-8')
-            user = q.user.screen_name
-            user.encode('utf-8')
-            bot.say("[ " + text + " ] - @" + user  + " - " + created_at)
+            id = q.id
+            # get each tweet's extended attributes; each tweet is an object with
+            # various attributes
+            tweet = api.GetStatus(id)
+            # check if the tweet was retweeted and if so, get the original
+            # untruncated tweet
+            try:
+                text = tweet.retweeted_status.text
+                # clean up the tweet text so we're not displaying urls twice
+                text = re.sub('https?:\/\/.[^\s].*$', '', text)
+                url = tweet.retweeted_status.urls[0].url
+                created_at = tweet.retweeted_status.created_at
+                bot.say("Incoming scope: " + created_at + " - [" + text + "] - " + url)
+            except AttributeError:
+                text = tweet.text
+                text = re.sub('https?:\/\/.[^\s].*$', '', text)
+                url = tweet.urls[0].url
+                created_at = tweet.created_at
+                bot.say("Incoming scope: " + created_at + " - [" + text + "] - " + url)
     else:
-        bot.say("Don't be a chomo, enter a search string")
+        bot.say("Don't be a mental midget, enter a search string")
