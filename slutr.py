@@ -145,6 +145,8 @@ def sluttosphere_get_pic(bot, trigger):
 Here we upvote the last pasted pic that is kept in the bot.memory['used_pics']['last_pic'].
 If the pic is not found, we add it to the database table with a vote count of 1.
 If the upvote command references an ID, we upvote that specific ID.
+
+:param1 (str):  id of the pic to be upvote, optional; part of trigger.group()
 '''
 @module.rate(20)
 @module.commands('upvote')
