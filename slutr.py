@@ -145,6 +145,8 @@ def sluttosphere_get_pic(bot, trigger):
 Here we upvote the last pasted pic that is kept in the bot.memory['used_pics']['last_pic'].
 If the pic is not found, we add it to the database table with a vote count of 1.
 If the upvote command references an ID, we upvote that specific ID.
+
+:param1 (str):  id of the pic to be upvote, optional; part of trigger.group()
 '''
 @module.rate(20)
 @module.commands('upvote')
@@ -164,6 +166,7 @@ def sluttosphere_upvote(bot, trigger):
                 print("Found the pic in the table. Updating slut's vote count")
                 session.query(table).filter_by(sluts_name=last_pic).update({'sluts_vote': table.sluts_vote + vote})
                 session.commit()
+                bot.say("Thank you for voting.")
             except:
                 print("Could not increment vote for {} in the Sluts table.".format(last_pic))
             finally:
@@ -184,9 +187,10 @@ def sluttosphere_upvote(bot, trigger):
         rs = session.query(exists().where((table.sluts_id == vote_id))).scalar()
         if rs is True:
             try:
-                print("Foudn the ID in the table. Updating slut's vote count")
+                print("Found the ID in the table. Updating slut's vote count")
                 session.query(table).filter_by(sluts_id=vote_id).update({'sluts_vote': table.sluts_vote + vote})
                 session.commit()
+                bot.say("Thank you for voting.")
             except:
                 print("Could not increment vote for {} in the Sluts table.".format(last_pic))
             finally:
