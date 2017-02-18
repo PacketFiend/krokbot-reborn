@@ -10,14 +10,44 @@ from sopel import module, tools
 import random
 from random import randint
 import praw
+from sqlalchemy import (create_engine, Table, Column, Integer, String, MetaData, ForeignKey, exc, desc)
+from sqlalchemy.sql import (select, exists)
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import sessionmaker
+import config
 
-# Define some memory dicts/lists for keeping track of pics that were already used
+'''
+Setup database ORM stuff. Database location is fed in via config module.
+'''
+Base = declarative_base()
+
+class Sluts(Base):
+    __tablename__ = 'sluts'
+    sluts_id = Column(Integer, primary_key=True, autoincrement=True)
+    sluts_vote = Column(Integer)
+    sluts_name = Column(String)
+
+def start_db():
+    #engine = create_engine('sqlite:///' + config.stats_db, connect_args={'check_same_thread': False}, pool_recycle = 14400)
+    engine = create_engine(config.sql_connection_string, pool_recycle = 14400)
+    Session = sessionmaker()
+    Session.configure(bind=engine)
+    session = Session()
+    Base.metadata.reflect(engine)
+
+    return session
+
+'''
+Define some memory dicts/lists for keeping track of pics that were already used
+'''
 def setup(bot):
     bot.memory["used_pics"] = {}
     bot.memory["used_pics"]['tittypic'] = []
     bot.memory["used_pics"]['clamshot'] = []
     bot.memory["used_pics"]['sideboob'] = []
     bot.memory["used_pics"]['sharpie'] = []
+    bot.memory["used_pics"]['last_pic'] = None
 
 # slutr extensions
 # Reddit titty pic poster
@@ -92,6 +122,7 @@ def sluttosphere_get_pic(bot, trigger):
                 print(sluttosphere_get_pic.__name__ + " - " + rand_submission)
                 bot.say(rand_submission)
                 bot.memory['used_pics'][pic_type].append(pic)
+                bot.memory['used_pics']['last_pic'] = rand_submission
                 break
     except (KeyError, IndexError, NameError):
         if 'tittypic' in trigger.group(0):
@@ -108,3 +139,72 @@ def sluttosphere_get_pic(bot, trigger):
         bot.say(errmsg)
         dummy_arg = None
         sluttosphere_setup(dummy_arg)
+
+'''
+!upvote command
+Here we upvote the last pasted pic that is kept in the bot.memory['used_pics']['last_pic'].
+If the pic is not found, we add it to the database table with a vote count of 1.
+If the upvote command references an ID, we upvote that specific ID.
+'''
+@module.rate(20)
+@module.commands('upvote')
+def sluttosphere_upvote(bot, trigger):
+    last_pic = bot.memory['used_pics']['last_pic']
+    table = Sluts
+    vote_id = trigger.group(2)
+    vote = 1
+
+    session = start_db()
+    if vote_id is None:
+        print("Searching for the slut in the table")
+        rs = session.query(exists().where((table.sluts_name == last_pic))).scalar()
+        if rs is True:
+            rs = session.query(table).filter_by(sluts_name=last_pic).scalar()
+            try:
+                print("Found the pic in the table. Updating slut's vote count")
+                session.query(table).filter_by(sluts_name=last_pic).update({'sluts_vote': table.sluts_vote + vote})
+                session.commit()
+            except:
+                print("Could not increment vote for {} in the Sluts table.".format(last_pic))
+            finally:
+                session.close()
+        elif rs is False:
+            print("Adding a new slut to vote on to the Sluts table.")
+            try:
+                rs = table(sluts_name=last_pic, sluts_vote=vote)
+                session.add(rs)
+                session.commit()
+            except:
+                print("Failed adding {} to the Sluts table".format(last_pic))
+            finally:
+                session.close()
+    else:
+        # Search for the pic based on the vote_id (which is really the slut_idand
+        # then update the pic's vote count.
+        rs = session.query(exists().where((table.sluts_id == vote_id))).scalar()
+        if rs is True:
+            try:
+                print("Foudn the ID in the table. Updating slut's vote count")
+                session.query(table).filter_by(sluts_id=vote_id).update({'sluts_vote': table.sluts_vote + vote})
+                session.commit()
+            except:
+                print("Could not increment vote for {} in the Sluts table.".format(last_pic))
+            finally:
+                session.close()
+        elif rs is False:
+            bot.say("Could not find the id of the titty pic, pipo")
+
+'''
+!topbabes command
+Print top voted pics.
+'''
+@module.rate(20)
+@module.commands('topsluts')
+def sluttosphere_topbabes(bot, trigger):
+    session = start_db()
+    table = Sluts
+    rs = session.query(table).order_by(desc(table.sluts_vote)).limit(5)
+    for slut in rs:
+        bot.say(str(slut.sluts_vote) + " votes: #" + str(slut.sluts_id) + " - " + slut.sluts_name)
+    bot.say("To upvote, either call !upvote after pic post or !upvote <#ID>")
+    session.close()
