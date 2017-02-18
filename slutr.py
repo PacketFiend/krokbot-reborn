@@ -166,6 +166,7 @@ def sluttosphere_upvote(bot, trigger):
                 print("Found the pic in the table. Updating slut's vote count")
                 session.query(table).filter_by(sluts_name=last_pic).update({'sluts_vote': table.sluts_vote + vote})
                 session.commit()
+                bot.say("Thank you for voting.")
             except:
                 print("Could not increment vote for {} in the Sluts table.".format(last_pic))
             finally:
@@ -186,9 +187,10 @@ def sluttosphere_upvote(bot, trigger):
         rs = session.query(exists().where((table.sluts_id == vote_id))).scalar()
         if rs is True:
             try:
-                print("Foudn the ID in the table. Updating slut's vote count")
+                print("Found the ID in the table. Updating slut's vote count")
                 session.query(table).filter_by(sluts_id=vote_id).update({'sluts_vote': table.sluts_vote + vote})
                 session.commit()
+                bot.say("Thank you for voting.")
             except:
                 print("Could not increment vote for {} in the Sluts table.".format(last_pic))
             finally:
