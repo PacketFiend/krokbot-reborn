@@ -166,9 +166,10 @@ def sluttosphere_upvote(bot, trigger):
                 print("Found the pic in the table. Updating slut's vote count")
                 session.query(table).filter_by(sluts_name=last_pic).update({'sluts_vote': table.sluts_vote + vote})
                 session.commit()
-                bot.say("Thank you for voting.")
             except:
                 print("Could not increment vote for {} in the Sluts table.".format(last_pic))
+            else:
+                bot.say("Thank you for voting.")
             finally:
                 session.close()
         elif rs is False:
@@ -190,9 +191,10 @@ def sluttosphere_upvote(bot, trigger):
                 print("Found the ID in the table. Updating slut's vote count")
                 session.query(table).filter_by(sluts_id=vote_id).update({'sluts_vote': table.sluts_vote + vote})
                 session.commit()
-                bot.say("Thank you for voting.")
             except:
                 print("Could not increment vote for {} in the Sluts table.".format(last_pic))
+            else:
+                bot.say("Thank you for voting.")
             finally:
                 session.close()
         elif rs is False:
@@ -210,5 +212,5 @@ def sluttosphere_topbabes(bot, trigger):
     rs = session.query(table).order_by(desc(table.sluts_vote)).limit(5)
     for slut in rs:
         bot.say(str(slut.sluts_vote) + " votes: #" + str(slut.sluts_id) + " - " + slut.sluts_name)
-    bot.say("To upvote, either call !upvote after pic post or !upvote <#ID>")
+    bot.say("To upvote, either call !upvote after pic post or !upvote <ID> number.")
     session.close()
