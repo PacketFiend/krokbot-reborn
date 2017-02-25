@@ -229,12 +229,12 @@ def get_periscope(bot, trigger):
                 text = re.sub('https?:\/\/.[^\s].*$', '', text)
                 url = tweet.retweeted_status.urls[0].url
                 created_at = tweet.retweeted_status.created_at
-                bot.say("Incoming scope: " + created_at + " - [" + text + "] - " + url)
             except AttributeError:
                 text = tweet.text
                 text = re.sub('https?:\/\/.[^\s].*$', '', text)
                 url = tweet.urls[0].url
                 created_at = tweet.created_at
+            else:
                 bot.say("Incoming scope: " + created_at + " - [" + text + "] - " + url)
     else:
         bot.say("Don't be a mental midget, enter a search string")
