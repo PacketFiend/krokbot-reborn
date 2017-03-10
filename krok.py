@@ -219,6 +219,7 @@ def talk_shit(bot, trigger):
 @module.rate(20) # we may need to adjust this, but we dont need people spamming the command
 @module.commands('deeplove')
 def deeplove(bot, trigger):
+    krok_handler = KrokHandler('krok_handler')
     """ usage: !deeplove <nick> """
     clean_quote = ''
     ret_quote = ''
@@ -229,29 +230,10 @@ def deeplove(bot, trigger):
 	bot.action("makes sweet android love to itself.", trigger.sender)
 	return
     try:
-        query = select([bestkrok.c.id, bestkrok.c.quote]).where(bestkrok.c.quote.like('%'+name+'%'))
-	items = conn.execute(query)
+        ret_quote = krok_handler.get_random_krok(text = name)
+        if ret_quote is None:
+            ret_quote = "That looks like an asshole I've never seen before"
 
-        cnt = 0
-        for i in items:
-            cnt += 1
-        if cnt == 0:
-            ret_quote = "that looks like an asshole I've never seen before"
-        else:
-            quote = randint(0,cnt)
-
-	    query = select([bestkrok.c.id, bestkrok.c.quote]).where(bestkrok.c.quote.like('%'+name+'%'))
-            items = conn.execute(query)
-
-            cnt = 0
-            clean_quote = ''
-            for q in items:
-                if cnt == quote:
-		            clean_quote = q[1].replace("\\'","'")
-                else:
-                    pass
-                cnt += 1
-            print deeplove.__name__ + " - " + trigger.nick + "@" + trigger.sender + " is insulting: " + name
     except IndexError:
         ret_quote = "you didn't type the name asshole"
     #except:

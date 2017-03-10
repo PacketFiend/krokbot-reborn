@@ -12,6 +12,7 @@ import time, re, twitter
 from sopel import module, tools
 from sopel.tools import events
 from pprint import pprint
+import threading
 
 from sqlalchemy import (create_engine, Table, Column, Text, Integer, String, MetaData, ForeignKey, exc)
 from sqlalchemy.sql import (select, exists)
@@ -26,45 +27,34 @@ metadata = MetaData()
 
 loggedInUsers = []
 whoisReceived = False
-displayUpdates = False
+displayUpdates = True
 
 engine = create_engine(config.sql_connection_string, pool_recycle = 14400)
 
 coolkids = Table('coolkids', metadata, autoload=True, autoload_with=engine)
 
+global twitter_updates
+global debug
+debug = False
+
+def setup(bot):
+    tw_init(bot)
+    
 @module.commands('tweet')
 def postStatusUpdate(bot, trigger):
     """Posts a twitter status update with krokbot's twitter account. URLs will be automatically shortened. Use !tweetpic for multimedia tweets.
 usage: !tweet <update>
 """
-    loginStatus = False
-
     message = str(trigger.group(2))
     nick = trigger.nick
-    conn = engine.connect()
-    q = select([coolkids.c.cantweet]).where(coolkids.c.nick == nick)
-    try:
-        items = conn.execute(q)
-    except OperationalError:
-        bot.msg(trigger.sender, nick + ", you broke the fucking SQL server. Gimme a minute and try again")
-    row = items.fetchone()
-    try:
-        canTweet = row[0]
-    except TypeError:
-        canTweet = 0
-
-    pprint(bot)
-    loginStatus = isLoggedIn(bot, nick)
-    if loginStatus and canTweet:
+    print "Message is " + message + "; nick is " + str(nick)
+    
+    error = can_tweet(bot, nick)
+    if error == 0:
         status = api.PostUpdate(message)
         bot.msg(trigger.sender, trigger.nick + ", you just tweeted: " + " " + status.text)
     else:
-        if not loginStatus:
-            bot.msg(trigger.sender, "Don't be a fucking tool. I don't let just anybody tweet. Register with Nickserv.")
-        elif not canTweet:
-            bot.msg(trigger.sender, "Hey there pipo, I just don't like you enough. Get one of my admins to vouch for you.")
-        else:
-            bot.msg(trigger.sender, "Sorry " + nick + ", you cannot send tweets. I'm so high I can't really figure out why.")
+        bot.say(trigger.sender, error)
 
 @module.commands('tweetpic')
 def postStatusUpdatePic(bot, trigger):
@@ -72,70 +62,90 @@ def postStatusUpdatePic(bot, trigger):
 usage: !tweet <update> <url> [<more update>]
 """
     nick = trigger.nick
-    loginStatus = False
-    #regex = re.compile(r"https?://[^\s]*")
     regex = re.compile("(https?|ftp)://([^\s/?\.#]+\.?)+(/[^\s]*)?")
     match = regex.search(trigger.group(2))
     message = str(trigger.group(2))
 
-    if match:
-        url = match.group()
-        message = message.replace(url,"").replace("  ", " ")        # Remove the URL from the message, and collapse any douple spaces
-        bot.msg(trigger.sender, "The message is: " + message)
-    else:
-        bot.msg(trigger.sender, "You need to include a URL, asshole.")
-        return
-
-    conn = engine.connect()
-    q = select([coolkids.c.cantweet]).where(coolkids.c.nick == nick)
-    try:
-        items = conn.execute(q)
-    except OperationalError:
-        bot.msg(trigger.sender, nick + ", you broke the fucking SQL server. Gimme a minute and try again")
-        return
-    row = items.fetchone()
-    try:
-        canTweet = row[0]
-    except TypeError:
-        canTweet = 0
-
-    loginStatus = isLoggedIn(bot, nick)
-    if loginStatus and canTweet:
-        status = api.PostMedia(message, url)
-        #bot.msg(trigger.sender, trigger.nick + ", you just tweeted: " + " " + status.text)
-    else:
-        if not loginStatus:
-            bot.msg(trigger.sender, "Don't be a fucking tool. I don't let just anybody tweet. Register with Nickserv.")
-        elif not canTweet:
-            bot.msg(trigger.sender, "Hey there pipo, I just don't like you enough. Get one of my admins to vouch for you.")
+    error = can_tweet(bot,nick)
+    if error == 0:
+        if match:
+            url = match.group()
+            message = message.replace(url,"").replace("  ", " ")        # Remove the URL from the message, and collapse any douple spaces
+            bot.msg(trigger.sender, "The message is: " + message)
         else:
-            bot.msg(trigger.sender, "Sorry " + nick + ", you cannot send tweets. I'm so high I can't really figure out why.")
+            bot.msg(trigger.sender, "You need to include a URL, asshole.")
+            return
+        status = api.PostMedia(message, url)
+        bot.msg(trigger.sender, trigger.nick + ", you just tweeted: " + " " + status.text)
+    else:
+        bot.say(trigger.sender, error)
 
-@module.require_admin
-@module.commands('hideupdates')
-def hideUpdates(bot, trigger):
+@module.commands('tw_status')
+def tw_status(bot, trigger):
+
+    print "Checking Twitter status..."
     global displayUpdates
-    displayUpdates = False
-    bot.msg(trigger.sender, trigger.nick + ", now hiding Twitter status updates")
+    if tw_stream_control(bot, "check") == True:
+        bot.say("The Twitter stream is active", trigger.sender)
+    else:
+        bot.say("The Twitter stream is inactive", trigger.sender)
+        
+    if displayUpdates == True:
+        bot.say("I *should* be displaying Twitter status updates...", trigger.sender)
+    else:
+        bot.say("I should *not* be displaying Twitter status updates...", trigger.sender)
 
 @module.require_admin
-@module.commands('displayupdates')
-def displayUpdates(bot, trigger):
+@module.commands('tw_showupdates')
+def showUpdates(bot, trigger):
     global displayUpdates
     displayUpdates = True
     bot.msg(trigger.sender, trigger.nick + ", now showing Twitter status updates")
 
 @module.require_admin
-@module.commands('showupdates')
-def showUpdates(bot, trigger):
+@module.commands('tw_hideupdates')
+def hideUpdates(bot, trigger):
+    global displayUpdates
+    displayUpdates = False
+    bot.msg(trigger.sender, trigger.nick + ", now hiding Twitter status updates")
 
+def tw_init(bot):
+
+    global twitter_updates
     global displayUpdates
     displayUpdates = True
+    
+    tw_stream_control(bot, "start")
+    
+def tw_stream_control(bot, command = None):
 
-    # Set up the user stream - returns a generator object
-    userStream = api.GetUserStream(withuser='followings')
-    print userStream
-    bot.msg(trigger.sender, "Twitter Stream Activated")
+    global twitter_updates
+    global debug
+    global userStream
+
+    if command == "start":
+        if tw_stream_control(bot, "check") == False:
+            # Set up the user stream - returns a generator object
+            userStream = api.GetUserStream(withuser='followings')
+            if debug: print userStream
+            twitter_updates = threading.Thread(target=tw_get_updates, args=(bot, userStream))
+            twitter_updates.start()
+            if debug: print "twitter_updates.is_alive(): " + str(twitter_updates.is_alive())
+    elif command == "check":
+        try:
+            twitter_updates
+        except NameError:
+            return False
+        if twitter_updates.is_alive():
+            return True
+        else:
+            return False
+    elif command == "stop":
+        # Stop the user stream
+        if tw_stream_control(bot, "check") == True:
+            del userStream
+
+def tw_get_updates(bot, userStream):
 
     # Run this loop looking for new tweets
     for datum in userStream:
@@ -144,9 +154,22 @@ def showUpdates(bot, trigger):
                 if displayUpdates:
                     bot.msg(channel, "Incoming tweet from @" + datum['user']['screen_name'] + "(" + datum['user']['name'] + "): " + datum['text'])
         print datum
+    
+
+@module.require_admin
+@module.commands('tw_reinit')
+def tw_reinit(bot, trigger):
+    
+    global displayUpdates
+    displayUpdates = True
+    tw_stream_control(bot, "stop")
+    tw_stream_control(bot, "start")
+
+    bot.msg(trigger.sender, "Twitter Stream Reactivated")
+
 
 @module.rule('.*')
-@module.event('319', '330')    # 307 is returned if a user is logged in. 319 is the list of channels it's in, and should be received first.
+@module.event('319', '330') # 307 is returned if a user is logged in. 319 is the list of channels it's in, and should be received first.
 def parseWhois(bot, trigger):
 
     global whoisReceived
@@ -163,10 +186,8 @@ def parseWhois(bot, trigger):
 
 @module.commands('loggedin')
 def checkLoginStatus(bot, trigger):
-    pprint(bot.users)
     nick = trigger.group(2)
     loggedIn = isLoggedIn(bot, nick)
-    print loggedIn
 
 def isLoggedIn(bot, nick):
 
@@ -187,6 +208,50 @@ def isLoggedIn(bot, nick):
     else:
         whoisReceived = False
         return False
+
+def can_tweet(bot, nick):
+
+    loginStatus = False
+    message = ""
+
+    conn = engine.connect()
+    q = select([coolkids.c.cantweet]).where(coolkids.c.nick == nick)
+    try:
+        items = conn.execute(q)
+    except OperationalError:
+        bot.msg(trigger.sender, nick + ", you broke the fucking SQL server. Gimme a minute and try again")
+        return
+    row = items.fetchone()
+    try:
+        canTweet = row[0]
+    except TypeError:
+        canTweet = 0
+
+    loginStatus = isLoggedIn(bot, nick)
+
+    if canTweet and loginStatus:
+        return 0
+    else:
+        if not loginStatus:
+            message = "Don't be a fucking tool. I don't let just anybody tweet. Register with Nickserv."
+        elif not canTweet:
+            message = "Hey there pipo, I just don't like you enough. Get one of my admins to vouch for you."
+        else:
+            message = "Sorry " + nick + ", you cannot send tweets. I'm so high I can't really figure out why."
+
+        return message
+        
+@module.require_admin
+@module.commands('tw_debug')
+def tw_debug(bot, trigger):
+
+   global debug
+   if debug == True:
+       debug = False
+       bot.say(trigger.nick + ", debug flag is now off. Thanks!", trigger.sender)
+   else:
+       debug = True
+       bot.say(trigger.nick + ", debug flag is now on. Go fuck a pig.", trigger.sender)
 
 '''
 Search for periscope.tv tweets. For more information on how tweets are
