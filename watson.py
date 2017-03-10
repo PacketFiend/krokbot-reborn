@@ -390,7 +390,8 @@ class KrokHandler:
                                     date = datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                                     emotions=bool(emotions), subjects=bool(subjects))
                 else:
-                    query = watson_krok.insert().values(text = trigger)
+                    query = watson_krok.insert().values(text = trigger,
+                                    emotions=bool(emotions), subjects=bool(subjects))
                 result = conn.execute(query)
             else:
                 if debug: print "In record_krok(): early return - no context identified."
@@ -417,6 +418,42 @@ class KrokHandler:
             traceback.print_exc()
             raise
 
+    def get_random_krok(self, bot = None, emotion = None, subject = None, text = None):
+        ''' Returns a random krok quote from the database. Can optionally return only a specific emotion or subject,
+        and can optionally search for specific text (aka deeplove)'''
+        
+        session = Session()
+        conn = engine.connect()
+
+        if emotion is not None:
+            items = session.query(watson_krok).join(watson_krokemotions)\
+                .filter(watson_krokemotions.c.emotion == emotion)\
+                .order_by('RAND()')\
+                .limit(1)
+        elif subject is not None:
+            items = session.query(watson_krok).join(watson_kroksubjects)\
+                .filter(watson_kroksubjects.c.subject == subject)\
+                .order_by('RAND()')\
+                .limit(1)
+        elif text is not None:
+            items = session.query(watson_krok)\
+                .filter(watson_krok.c.text.like('%'+text+'%'))\
+                .order_by('RAND()')\
+                .limit(1)
+        else:
+            items = session.query(watson_krok)\
+                .order_by('RAND()')\
+                .limit(1)
+
+        row = items.first()
+        if row is not None:
+            pprint(row)
+            krok = row.text
+            return krok
+        else:
+            return None
+
+            
     def get_emotion(self, bot, krok="", krokID=0):
         '''Returns emotional context for a message. Returns a dict with the krok, the
         krokID, and every emotion found tagged to it, if any.'''
