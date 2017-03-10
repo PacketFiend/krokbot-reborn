@@ -103,7 +103,6 @@ class channelActivity:
         if self.channelActivityCounterLog < 1: self.channelActivityLog = 0  # log(0) is undefined, and we don't want negative numbers here
         else: self.channelActivityLog = self.logFactor * math.log(self.channelActivityCounterLog)
         self.channelActivitySum = self.channelActivityExp + self.channelActivityLog
-        print "channel is now :" + channel
         bot.memory['activity'][channel] = self.channelActivitySum
 
 defaultTimer = {} # channelActivity('defaultTimer')
@@ -123,7 +122,7 @@ def countMessages(bot, trigger):
     defaultTimer[channel].calculateChannelActivity(bot, channel)
 
 # Calculates channel activity once per minute if the channel is dead - newer messages are given more weight
-@module.interval(10)
+@module.interval(60)
 def calculateChannelActivity(bot):
 
     for channel in defaultTimer:
