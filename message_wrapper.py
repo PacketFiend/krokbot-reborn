@@ -54,6 +54,9 @@ sopel.bot.Sopel.msg = msg
 @sopel.module.commands('donthighlightme')
 def no_highight(bot, trigger):
 
+    '''Instructs the krokbot to noght highlight you. Your nick will mangled in future messages
+    to avoid highlighting you'''
+
     conn = engine.connect()
     query = coolkids.update().values(highlight=0).where(coolkids.c.nick == trigger.nick)
     conn.execute(query)
@@ -61,6 +64,8 @@ def no_highight(bot, trigger):
 @sopel.module.commands('dohighlightme')
 def do_highight(bot, trigger):
 
+    '''Instructs the krokbot to highlight you once again'''
+    
     conn = engine.connect()
     query = coolkids.update().values(highlight=1).where(coolkids.c.nick == trigger.nick)
     conn.execute(query)
