@@ -566,17 +566,13 @@ def analyzeText(bot, trigger):
     results = conn.execute(query)
     if not results.rowcount == 0:
         for row in results:
-            print "row:"
-            pprint(row)
-            print "hostmask: " + trigger.hostmask
-            
             if row.hostmasks is not None:
                 hostmasklist = row.hostmasks
                 hostmasks = hostmasklist.split(',')
                 for hostmask in hostmasks:
                     if hostmask.strip() in trigger.hostmask:
-                        collect_krok = True
                         if row.collectkrok == 1:
+                            collect_krok = True
                             print "collecting krok"
                         else:
                             print "not colelcting krok"
