@@ -28,6 +28,7 @@ watson_apikeys = Table('watson_apikeys', metadata, autoload=True, autoload_with=
 watson_krok = Table('watson_krok', metadata, autoload=True, autoload_with=engine)
 watson_kroksubjects = Table('watson_kroksubjects', metadata, autoload=True, autoload_with=engine)
 watson_krokemotions = Table('watson_krokemotions', metadata, autoload=True, autoload_with=engine)
+coolkids = Table('coolkids', metadata, autoload=True, autoload_with=engine)
 Session = sessionmaker(bind=engine)
 
 global debug
@@ -388,6 +389,7 @@ class KrokHandler:
                 if record_date:
                     query = watson_krok.insert().values(text = trigger,
                                     date = datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                    nick = trigger.nick,
                                     emotions=bool(emotions), subjects=bool(subjects))
                 else:
                     query = watson_krok.insert().values(text = trigger,
@@ -447,9 +449,7 @@ class KrokHandler:
 
         row = items.first()
         if row is not None:
-            pprint(row)
-            krok = row.text
-            return krok
+            return row.text
         else:
             return None
 
@@ -559,11 +559,32 @@ def analyzeText(bot, trigger):
     '''Passes messages to the TextAnalyzer class for analysis by the Big Blue'''
     global debug
     channel = trigger.sender
+    collect_krok = False
+    
+    conn = engine.connect()
+    query = select([coolkids.c.hostmasks, coolkids.c.collectkrok])
+    results = conn.execute(query)
+    if not results.rowcount == 0:
+        for row in results:
+            print "row:"
+            pprint(row)
+            print "hostmask: " + trigger.hostmask
+            
+            if row.hostmasks is not None:
+                hostmasklist = row.hostmasks
+                hostmasks = hostmasklist.split(',')
+                for hostmask in hostmasks:
+                    if hostmask.strip() in trigger.hostmask:
+                        collect_krok = True
+                        if row.collectkrok == 1:
+                            print "collecting krok"
+                        else:
+                            print "not colelcting krok"
+                if collect_krok: break    
 
     # Ignore this rule if it's not rockho
-    if not debug:
-        if "ct.charter.com" not in trigger.hostmask:
-            return
+    if not debug and not collect_krok:
+        return
     try:
         krok_handler.record_krok(bot, trigger)
     except Exception, message:
